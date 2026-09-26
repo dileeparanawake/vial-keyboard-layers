@@ -5,6 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Vial Layer Map</title>
 <meta name="description" content="See every layer of a Vial keyboard layout at once, with plain labels instead of raw keycodes.">
+<meta name="theme-color" content="#0b0d10">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script>
+  // The app manifest (name and icon when installed) only over http(s): a page opened as a file
+  // cannot fetch it, and would log an error for it.
+  if (/^https?:$/.test(location.protocol)) {
+    const m = document.createElement('link');
+    m.rel = 'manifest'; m.href = 'manifest.webmanifest';
+    document.head.appendChild(m);
+  }
+</script>
 <style>
 /* Key faces and text colours (--key, --key-hover, --key-pressed, --key-side, --text, --muted,
    --faint) and the layer colours come from VL.THEMES in the script, set on the root element, so

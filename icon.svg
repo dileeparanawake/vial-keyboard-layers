@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- One keycap carrying every layer's legend, in the page's layer colours -->
+  <rect width="512" height="512" rx="112" fill="#0b0d10"/>
+  <rect x="72" y="100" width="368" height="344" rx="64" fill="#2a313b"/>
+  <rect x="72" y="68" width="368" height="344" rx="64" fill="#14181e" stroke="#3a4452" stroke-width="6"/>
+  <rect x="118" y="114" width="128" height="72" rx="20" fill="#ffffff"/>
+  <rect x="286" y="126" width="108" height="48" rx="24" fill="#4fd6ff"/>
+  <rect x="118" y="216" width="108" height="48" rx="24" fill="#ffd23f"/>
+  <rect x="286" y="216" width="108" height="48" rx="24" fill="#ff79d9"/>
+  <rect x="118" y="306" width="108" height="48" rx="24" fill="#7dff8a"/>
+  <rect x="286" y="306" width="108" height="48" rx="24" fill="#ffa24d"/>
+</svg>

@@ -71,7 +71,7 @@ Names are kept in your browser. To keep them with the page:
 **B. As its own app window, from the live page (no download).**
 
 1. Open the page in Chrome or Edge.
-2. **Chrome:** menu, **Cast, save and share**, **Install page as app**. **Edge:** menu, **Apps**, **Install this site as an app**.
+2. **Chrome:** the install button at the right of the address bar, or menu, **Cast, save and share**, **Install Vial Layer Map**. **Edge:** menu, **Apps**, **Install this site as an app**.
 3. **Safari 17 or later, on a Mac:** File, **Add to Dock**.
 
 The menu item only shows on the live page, not on a copy opened from your disk. It then opens like any other app (on a Mac, from the Dock, Launchpad or Spotlight). A launcher such as Alfred, Raycast or macOS Shortcuts can give it a hotkey. It needs internet each time it opens, as the page is not cached for offline use.
@@ -143,6 +143,8 @@ test/parse.test.mjs         parser tests against the example layout (node test/p
 hotkey/open-layer-map.sh    opens the map in its own Chrome window
 hotkey/karabiner-vial-layers.json   optional Karabiner rule for a Hyper+K hotkey
 docs/                       screenshots, and the route for reading from the keyboard
+icon.svg, *.png (root)      the app icon: tab, Dock, installed app, iPhone home screen
+manifest.webmanifest        the app's name and icon when installed from the live page
 ```
 
 To change the built-in layout: copy your `.vil` into `layouts/`, then run `python3 tools/embed.py layouts/<file>.vil`.
