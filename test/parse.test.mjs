@@ -177,6 +177,15 @@ t('your own names replace labels, including inside tap dances', () => {
   const m = VL.analyse(vil, { os: 'mac', notes: { M3: 'Alfred clipboard' } });
   assert.ok(m.cells[0].some(c => c.hold === 'Alfred clipboard'));
 });
+t('hovering a tap dance, tap or hold, tells its whole story', () => {
+  const noted = { ...ctx, notes: { M3: 'Alfred clipboard', M4: 'Screenshot' } };
+  const full = VL.describe('TD(2)', noted).full;
+  assert.match(full, /Tap: C/);
+  assert.match(full, /Hold: Alfred clipboard/);
+  assert.match(full, /Tap then hold: Screenshot/);
+  // The hold legend's tooltip is that same full line, not just "Hold: ..."
+  assert.match(html, /c: 'hold', text: base\.hold, col: holdCol, title: baseTitle \|\|/);
+});
 t('rejects non-vil JSON', () => {
   assert.throws(() => VL.analyse({ foo: 1 }), /no "layout"/);
 });

@@ -1216,7 +1216,8 @@ if (typeof module !== 'undefined') module.exports = VL;
       const baseCol = base.kind === 'layer' ? colour(base.layerRef) : colour(0);
       // Extras (double-tap, tap then hold) live in the single-layer view and the detail panel; here a "+" marks them.
       const more = base.extras.length ? '<span class="more" aria-hidden="true">+</span>' : '';
-      const baseTitle = (base.full || '') + (base.extras.length ? '. ' + base.extras.map(e => e.label + ': ' + e.text).join(' · ') : '');
+      // One tooltip for the key's own legends (base and hold): its whole story, tap, hold, double-tap and tap then hold.
+      const baseTitle = base.full || '';
       const items = [baseText ? { c: 'base', text: baseText, col: baseCol, title: baseTitle, extra: more } : null];
       slotOrder().forEach(l => {
         const d = m.cells[l.index][ki];
@@ -1225,7 +1226,7 @@ if (typeof module !== 'undefined') module.exports = VL;
       });
       if (base.hold) {
         if (items.length % 2 === 0) items.push(null);
-        items.push({ c: 'hold', text: base.hold, col: holdCol, title: 'Hold: ' + base.hold, layer: holdCol != null });
+        items.push({ c: 'hold', text: base.hold, col: holdCol, title: baseTitle || 'Hold: ' + base.hold, layer: holdCol != null });
       }
       inner += '<div class="face">';
       for (let i = 0; i < items.length; i += 2) {
