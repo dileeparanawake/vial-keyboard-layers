@@ -1,0 +1,7 @@
+.DS_Store
+.claude/settings.local*
+.claude/projects/
+
+# Local-only agent and planning config (never committed)
+CLAUDE.local.md
+.claude/skills/chart/

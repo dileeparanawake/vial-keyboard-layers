@@ -1,0 +1,1565 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vial Layer Map</title>
+<meta name="description" content="See every layer of a Vial keyboard layout at once, with plain labels instead of raw keycodes.">
+<style>
+/* Key faces and text colours (--key, --key-hover, --key-pressed, --key-side, --text, --muted,
+   --faint) and the layer colours come from VL.THEMES in the script, set on the root element, so
+   the contrast test checks exactly what is drawn. */
+:root {
+  --bg: #0b0d10;
+  --panel: #14181e;
+  --key-edge: #3a4452;
+  --accent: #5ad1ff;
+  --focus: #ffffff;
+  --u: 92px;
+  --lift: 3px;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #f3f4f6;
+  --panel: #ffffff;
+  --key-edge: #8b95a3;
+  --accent: #006a94;
+  --focus: #000000;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  min-height: 100vh;
+}
+button, input, select { font: inherit; color: inherit; }
+/* One slim toolbar: title, layer chips, then icon buttons. It wraps only in a narrow window. */
+header {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+  padding: 5px 12px; border-bottom: 1px solid var(--key-edge);
+  background: var(--panel); position: sticky; top: 0; z-index: 5;
+}
+header h1 { font-size: 14px; margin: 0; font-weight: 700; letter-spacing: 0.01em; white-space: nowrap; }
+.file { color: var(--muted); font-size: 12px; white-space: nowrap; }
+header .file { display: none; }
+.spacer { flex: 1; }
+.tools { display: flex; align-items: center; gap: 4px; }
+.btn {
+  background: transparent; border: 1px solid var(--key-edge); border-radius: 8px;
+  padding: 5px 11px; cursor: pointer; color: var(--text);
+}
+.btn:hover { border-color: var(--text); }
+.ibtn {
+  display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 6px;
+  background: transparent; border: 1px solid var(--key-edge); border-radius: 7px; cursor: pointer;
+  color: var(--text); font-size: 12px; font-weight: 700; text-decoration: none; line-height: 1;
+}
+.ibtn:hover { border-color: var(--text); }
+/* Loading your own layout is the one thing to find, so it is the one labelled, accented button. */
+.ibtn.load { border-color: var(--accent); color: var(--accent); gap: 5px; grid-auto-flow: column; }
+.ibtn.load:hover { border-color: var(--text); color: var(--text); }
+.ibtn[hidden] { display: none; }
+.ibtn .label { display: none; font-weight: 600; font-size: 12px; }
+@media (min-width: 720px) { .ibtn .label { display: inline; } }
+.ibtn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.btn:focus-visible, .ibtn:focus-visible, .chip:focus-visible, .key:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.btn[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+nav.layers { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 5px; height: 26px;
+  border: 1.5px solid var(--key-edge); border-radius: 999px; padding: 0 9px 0 3px;
+  background: var(--panel); cursor: pointer; font-weight: 600; font-size: 13px; white-space: nowrap;
+}
+.chip .num {
+  font-size: 11px; min-width: 18px; height: 18px; border-radius: 999px; display: inline-grid; place-items: center;
+  background: var(--lc, var(--text)); color: var(--bg); font-weight: 800;
+}
+.chip .reach { font-weight: 400; color: var(--muted); font-size: 12px; display: none; }
+.chip[aria-pressed="true"] { border-color: var(--lc, var(--text)); box-shadow: 0 0 0 1px var(--lc, var(--text)) inset; }
+.chip.empty { opacity: 0.6; }
+.hidden-note { color: var(--muted); font-size: 12px; display: none; }
+@media (min-width: 1280px) {
+  .chip .reach, .hidden-note { display: inline; }
+}
+/* The file's name is in the Load button's tooltip; it shows in the toolbar only when there is room. */
+@media (min-width: 1600px) {
+  header .file { display: inline; }
+}
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+main { padding: 6px 8px 32px; }
+.board-wrap { width: 100%; }
+.board { position: relative; margin: 0 auto; }
+/* Keys are square, at the size that fits the whole board in the window (renderBoard); a little
+   taller only when there is height to spare and a key needs it for its words.
+   Each is drawn as a keycap: a dark face on a lighter skirt (the shadow below). Hover presses it
+   half way, pinning (click, or Enter) presses it fully and it stays down until released. */
+.key {
+  position: absolute; border-radius: calc(var(--u) * 0.1);
+  background: var(--key); border: 1.5px solid var(--key-edge);
+  box-shadow: 0 var(--lift) 0 var(--key-side);
+  padding: calc(var(--u) * 0.045) calc(var(--u) * 0.055);
+  overflow: hidden; cursor: pointer;
+  transition: translate 90ms ease-out, box-shadow 90ms ease-out, background-color 90ms ease-out, border-color 90ms ease-out;
+}
+.key:hover { translate: 0 1px; background: var(--key-hover); box-shadow: 0 calc(var(--lift) - 1px) 0 var(--key-side); }
+.key.pinned, .key:focus-visible {
+  translate: 0 calc(var(--lift) - 1px); background: var(--key-pressed); border-color: var(--text);
+  box-shadow: 0 1px 0 var(--key-side), inset 0 2px 3px rgba(0, 0, 0, 0.35);
+}
+.key:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.key.ghost { cursor: default; }
+/* Movement off: the face, edge and skirt still change, the key just does not travel. */
+@media (prefers-reduced-motion: reduce) {
+  .key { transition: none; }
+  .key:hover, .key.pinned, .key:focus-visible { translate: none; }
+}
+/* All layers: legends in fixed places, like Miryoku's reference, two to a row.
+   Base top left, then each other layer in its own place and colour, and the hold
+   (a modifier or the layer it opens) bottom right. */
+.key .face { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(min-content, auto); grid-auto-rows: minmax(min-content, 1fr); height: 100%; }
+.key .row { display: flex; align-items: center; min-width: 0; overflow: hidden; }
+.key .row:first-child { align-items: baseline; }
+.key .row:last-child { align-items: flex-end; }
+.key .cell { flex: 0 0 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; line-height: 1.1; font-size: clamp(9px, calc(var(--u) * 0.155), 15px); }
+/* A row too wide for one line takes two: the right legend drops under the left, still on the right. */
+.key .row.wrap { flex-wrap: wrap; align-content: center; }
+.key .row.wrap:last-child { align-content: flex-end; }
+.key .row.wrap .cell { white-space: normal; max-width: 100%; }
+.key .row.squeeze .cell { flex: 0 1 auto; }
+.key .row.squeeze .cell.base { flex-shrink: 0; text-overflow: clip; }
+.key .cell.r { margin-left: auto; padding-left: 3px; text-align: right; }
+.key .cell.base { font-size: clamp(11px, calc(var(--u) * 0.21), 22px); font-weight: 600; }
+.key .cell.hold { color: var(--muted); }
+.key .more { color: var(--muted); font-weight: 800; font-size: 0.75em; margin-left: 1px; }
+.board-wrap { overflow-x: auto; }
+.board.compact .key { padding: 1.5px 2.5px; border-width: 1px; }
+/* single-layer view */
+.single .key .face { display: flex; flex-direction: column; }
+.single .key .row:first-child { margin-bottom: auto; }
+.single .key .cell.base { font-size: clamp(13px, calc(var(--u) * 0.3), 30px); color: var(--lc, var(--text)); }
+.single .key.trans .cell.base { color: var(--faint); font-weight: 500; font-style: italic; }
+.single .key .row.sub { color: var(--muted); font-size: clamp(10px, calc(var(--u) * 0.15), 14px); font-weight: 600; line-height: 1.12; }
+.single .key .row.sub .cell { font-size: inherit; color: var(--text); }
+.single .key .row.sub .cell.lab { color: var(--muted); font-weight: 600; text-overflow: clip; flex-shrink: 0; }
+.single .key .row.sub .lab + .cell { margin-left: 4px; }
+.single .key.reach { border-color: var(--lc); box-shadow: 0 var(--lift) 0 var(--key-side), inset 0 0 0 3px var(--lc); }
+.single .key.reach::after {
+  content: "hold"; position: absolute; right: 5px; bottom: 4px; font-size: 10px; font-weight: 800; line-height: 1.3;
+  color: var(--bg); background: var(--lc); border-radius: 4px; padding: 0 4px;
+}
+.board.compact.single .key.reach::after { display: none; }
+.single .key.reach.how-toggle::after { content: "toggle"; }
+.single .key.reach.how-oneshot::after { content: "one-shot"; }
+.single .key.reach.how-double-tap::after { content: "2x tap"; }
+.single .key.reach.how-tap-hold::after { content: "tap+hold"; }
+.single .key.reach.how-to::after { content: "switch"; }
+.half-label { position: absolute; left: 0; color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; line-height: 18px; }
+/* detail panel */
+.detail {
+  margin: 18px auto 0; background: var(--panel); border: 1px solid var(--key-edge); border-radius: 12px;
+  padding: 12px 14px; max-width: 1100px; min-height: 120px;
+}
+.detail h2 { font-size: 15px; margin: 0 0 8px; }
+.detail .hint { color: var(--muted); margin: 0; }
+.detail table { border-collapse: collapse; width: 100%; }
+.detail td { padding: 4px 8px; vertical-align: top; border-top: 1px solid var(--key-edge); overflow-wrap: anywhere; }
+.detail td:first-child { white-space: nowrap; font-weight: 700; width: 1%; }
+.detail .dim { color: var(--muted); }
+.btn.small { padding: 2px 9px; font-size: 13px; border-radius: 6px; }
+.detail .parts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+.note-edit { margin-top: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.note-edit label { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.note-edit input { background: var(--bg); border: 1px solid var(--key-edge); border-radius: 6px; padding: 3px 7px; min-width: 12em; max-width: 100%; }
+.note-edit input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.note-actions { margin: 10px 0 0; }
+.ref .hint { color: var(--muted); margin: 0; }
+footer.credit {
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 14px;
+  padding: 18px 16px 24px; border-top: 1px solid var(--key-edge); color: var(--muted); font-size: 13px;
+}
+footer.credit a { color: var(--muted); text-decoration: none; }
+footer.credit a:hover, footer.credit a:focus-visible { color: var(--text); text-decoration: underline; }
+footer.credit a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+footer.credit .icon { display: inline-grid; place-items: center; width: 24px; height: 24px; }
+footer.credit svg { width: 16px; height: 16px; fill: currentColor; }
+.swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: var(--lc); margin-right: 6px; vertical-align: -1px; }
+.ref { margin: 18px auto 0; max-width: 1100px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.ref section { background: var(--panel); border: 1px solid var(--key-edge); border-radius: 12px; padding: 12px 14px; }
+.ref h2 { font-size: 15px; margin: 0 0 8px; }
+.ref ul { list-style: none; margin: 0; padding: 0; }
+.ref li { padding: 5px 0; border-top: 1px solid var(--key-edge); }
+.ref li:first-child { border-top: 0; }
+.ref code { color: var(--muted); font-size: 12px; }
+.drop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: none; place-items: center; z-index: 20;
+  font-size: 22px; font-weight: 700; border: 4px dashed var(--accent);
+}
+body.dragging .drop { display: grid; }
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; place-items: center; z-index: 30; padding: 16px;
+}
+.overlay.open { display: grid; }
+.overlay .card { background: var(--panel); border: 1px solid var(--key-edge); border-radius: 12px; padding: 16px 20px; max-width: 520px; width: 100%; }
+.overlay h2 { margin: 0 0 10px; font-size: 17px; }
+.overlay dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; }
+.overlay dt { font-weight: 700; }
+kbd { border: 1px solid var(--key-edge); border-bottom-width: 2px; border-radius: 5px; padding: 0 6px; font: 600 13px ui-monospace, Menlo, monospace; background: var(--key); }
+a.btn { text-decoration: none; }
+.error { color: #ff8a8a; font-weight: 700; padding: 8px 16px; }
+a { color: var(--accent); }
+.rename { font: inherit; font-weight: 600; width: 9em; background: var(--bg); border: 1px solid var(--key-edge); border-radius: 6px; padding: 0 4px; }
+/* The title gives its room to the board's controls in a smaller window; screen readers still get it. */
+@media (max-width: 899px) {
+  header h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+/* A short window: the key's details run on as one wrapped line per layer, so they fit under the board. */
+@media (max-height: 700px) {
+  .detail { margin-top: 10px; padding: 8px 12px; min-height: 0; }
+  .detail h2 { font-size: 13px; margin-bottom: 4px; }
+  .detail table, .detail tbody { display: block; }
+  .detail tr { display: inline; }
+  .detail td { display: inline; border: 0; padding: 0; font-size: 13px; }
+  .detail td:first-child { padding-right: 4px; }
+  .detail td:last-child { padding-right: 14px; }
+  .detail td code { font-size: 11px; }
+  .detail .parts { display: inline-flex; margin: 0 0 0 4px; }
+}
+@media (max-width: 480px) {
+  main { padding-left: 8px; padding-right: 8px; }
+  .ref { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Vial Layer Map</h1>
+  <nav class="layers" id="layer-nav" aria-label="Layers"></nav>
+  <span class="spacer"></span>
+  <span class="file" id="file-name">No layout loaded</span>
+  <div class="tools">
+    <button class="ibtn load" id="open-btn" title="Load your .vil (O), or drop it anywhere on the page" aria-label="Load your .vil">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg><span class="label">Load .vil</span>
+    </button>
+    <button class="ibtn" id="reset-btn" title="Back to the built-in example" aria-label="Back to the built-in example" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v5h5"/></svg>
+    </button>
+    <input type="file" id="file-input" accept=".vil,.json,application/json" hidden>
+    <button class="ibtn" id="os-btn" title="Labels for Mac or PC (M)">Mac</button>
+    <button class="ibtn" id="theme-btn" title="Switch light or dark" aria-label="Switch to the light theme">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>
+    </button>
+    <!-- Vial web cannot be embedded: it needs SharedArrayBuffer, which only works when the top page is
+         cross-origin isolated, and a local file cannot be. So it opens in its own tab. -->
+    <a class="ibtn" id="vial-btn" href="https://vial.rocks/" target="_blank" rel="noopener" title="Edit in Vial: opens Vial web in a new tab (V). Needs Chrome, Edge or Arc" aria-label="Edit in Vial, opens in a new tab">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
+    </a>
+    <button class="ibtn" id="help-btn" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">?</button>
+  </div>
+</header>
+<div class="error" id="error" role="alert" hidden></div>
+<main>
+  <div class="board-wrap" id="board-wrap"><div class="board" id="board" role="group" aria-label="Keyboard"></div></div>
+  <div class="detail" id="detail" aria-live="polite"></div>
+  <div class="ref" id="ref"></div>
+</main>
+<footer class="credit">
+  <a id="credit-site" href="#" target="_blank" rel="noopener">Built by Dileepa Ranawake</a>
+  <a class="icon" href="https://github.com/dileeparanawake" target="_blank" rel="noopener" aria-label="Dileepa Ranawake on GitHub" title="GitHub">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+  </a>
+  <a class="icon" href="https://www.linkedin.com/in/dileepa-ranawake/" target="_blank" rel="noopener" aria-label="Dileepa Ranawake on LinkedIn" title="LinkedIn">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z"/></svg>
+  </a>
+</footer>
+<div class="drop">Drop your .vil to load it</div>
+<div class="overlay" id="help" role="dialog" aria-modal="true" aria-labelledby="help-title">
+  <div class="card">
+    <h2 id="help-title">Shortcuts</h2>
+    <dl>
+      <dt><kbd>0</kbd> to <kbd>9</kbd></dt><dd>Show that layer on its own, with larger legends</dd>
+      <dt><kbd>Esc</kbd> or <kbd>A</kbd></dt><dd>Back to all layers at once</dd>
+      <dt><kbd>&larr;</kbd> <kbd>&rarr;</kbd></dt><dd>Previous or next layer</dd>
+      <dt><kbd>O</kbd></dt><dd>Load your .vil (or drop it on the page). It is remembered in this browser</dd>
+      <dt><kbd>M</kbd></dt><dd>Mac or PC labels</dd>
+      <dt><kbd>V</kbd></dt><dd>Open Vial web in a new tab, to change the layout</dd>
+      <dt><kbd>?</kbd></dt><dd>This help</dd>
+      <dt>Hover or click a key</dt><dd>Everything it does, on every layer</dd>
+      <dt>Double-click a layer name</dt><dd>Rename it (remembered for this layout)</dd>
+    </dl>
+    <p><button class="btn" id="help-close">Close</button></p>
+  </div>
+</div>
+
+<!-- @default-vil-start -->
+<script type="application/json" id="default-vil">{"version":1,"uid":5010774632021243529,"layout":[[["KC_NO","KC_Q","KC_W","KC_F","KC_P","KC_B","KC_NO"],["KC_NO","LSFT_T(KC_A)","LCTL_T(KC_R)","LALT_T(KC_S)","LGUI_T(KC_T)","KC_G","KC_NO"],["KC_NO","TD(7)","KC_X","TD(2)","TD(1)","KC_V",-1],[-1,-1,-1,"TD(4)","TD(3)","TD(6)",-1],["KC_NO","KC_QUOTE","KC_Y","KC_U","KC_L","KC_J","KC_NO"],["KC_NO","RSFT_T(KC_O)","RCTL_T(KC_I)","RALT_T(KC_E)","RGUI_T(KC_N)","KC_M","KC_NO"],["KC_NO","KC_SLASH","KC_DOT","KC_COMMA","KC_H","KC_K",-1],[-1,-1,-1,"TD(0)","TD(5)","KC_ENTER",-1]],[["KC_NO","KC_1","KC_2","KC_3","KC_4","KC_5","KC_NO"],["KC_NO","OSM(MOD_LSFT)","OSM(MOD_LCTL)","OSM(MOD_LALT)","OSM(MOD_LGUI)","KC_NO","KC_NO"],["KC_NO","SGUI(KC_LBRACKET)","LGUI(KC_GRAVE)","SGUI(KC_GRAVE)","SGUI(KC_RBRACKET)","KC_NO",-1],[-1,-1,-1,"TO(0)","KC_TRNS","KC_TRNS",-1],["KC_NO","KC_0","KC_9","KC_8","KC_7","KC_6","KC_NO"],["KC_NO","KC_RIGHT","KC_UP","KC_DOWN","KC_LEFT","KC_CAPSLOCK","KC_NO"],["KC_NO","KC_END","KC_PGUP","KC_PGDOWN","KC_HOME","KC_INSERT",-1],[-1,-1,-1,"KC_TRNS","KC_TRNS","KC_TRNS",-1]],[["KC_NO","LGUI(KC_Q)","LGUI(KC_W)","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","OSM(MOD_LSFT)","OSM(MOD_LCTL)","OSM(MOD_LALT)","OSM(MOD_LGUI)","KC_NO","KC_NO"],["KC_NO","LGUI(KC_LBRACKET)","KC_NO","KC_NO","LGUI(KC_RBRACKET)","KC_NO",-1],[-1,-1,-1,"TO(0)","KC_TRNS","KC_TRNS",-1],["KC_NO","LGUI(KC_Z)","LGUI(KC_X)","LGUI(KC_C)","LGUI(KC_V)","SGUI(KC_Z)","KC_NO"],["KC_NO","KC_MS_R","KC_MS_U","KC_MS_D","KC_MS_L","KC_NO","KC_NO"],["KC_NO","KC_WH_R","KC_WH_D","KC_WH_U","KC_WH_L","KC_NO",-1],[-1,-1,-1,"KC_BTN3","KC_BTN1","KC_BTN2",-1]],[["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","OSM(MOD_LCTL)","KC_BRID","KC_BRIU","KC_NO","KC_NO","KC_NO"],["KC_NO","RGB_TOG","LCTL(KC_BRID)","LCTL(KC_BRIU)","KC_NO","KC_NO",-1],[-1,-1,-1,"TO(0)","KC_TRNS","KC_TRNS",-1],["KC_NO","LCG(KC_Q)","KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_MFFD","KC_VOLU","KC_VOLD","KC_MRWD","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO","KC_NO",-1],[-1,-1,-1,"KC_MUTE","KC_MPLY","KC_TRNS",-1]],[["KC_NO","KC_LBRACKET","KC_7","KC_8","KC_9","KC_RBRACKET","KC_NO"],["KC_NO","KC_SCOLON","KC_4","KC_5","KC_6","KC_EQUAL","KC_NO"],["QK_LAYER_LOCK","KC_GRAVE","KC_1","KC_2","KC_3","KC_BSLASH",-1],[-1,-1,-1,"TO(0)","KC_0","KC_MINUS",-1],["KC_NO","KC_BSPACE","KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","OSM(MOD_RSFT)","OSM(MOD_RCTL)","OSM(MOD_RALT)","OSM(MOD_RGUI)","KC_NO","KC_NO"],["KC_NO","KC_SLASH","KC_DOT","KC_COMMA","KC_QUOTE","KC_NO",-1],[-1,-1,-1,"KC_TRNS","KC_TRNS","KC_TRNS",-1]],[["KC_TRNS","KC_TRNS","KC_TRNS","KC_TRNS","KC_TRNS","KC_TRNS","KC_TRNS"],["KC_TRNS","KC_TRNS","KC_TRNS","KC_TRNS","KC_TRNS","KC_TRNS","KC_TRNS"],["KC_TRNS","KC_TRNS","KC_TRNS","KC_TRNS","KC_TRNS","KC_TRNS",-1],[-1,-1,-1,"KC_TRNS","KC_TRNS","KC_TRNS",-1],["KC_TRNS","KC_TRNS","KC_TRNS","KC_TRNS","KC_TRNS","KC_TRNS","KC_TRNS"],["KC_TRNS","KC_TRNS","KC_TRNS","KC_TRNS","KC_TRNS","KC_TRNS","KC_TRNS"],["KC_TRNS","KC_TRNS","KC_TRNS","KC_TRNS","KC_TRNS","KC_TRNS",-1],[-1,-1,-1,"KC_TRNS","KC_TRNS","KC_TRNS",-1]]],"encoder_layout":[[["RGB_MOD","RGB_RMOD"],["RGB_HUI","RGB_HUD"],["RGB_VAI","RGB_VAD"],["RGB_SAI","RGB_SAD"]],[["RGB_MOD","RGB_RMOD"],["RGB_HUI","RGB_HUD"],["RGB_VAI","RGB_VAD"],["RGB_SAI","RGB_SAD"]],[["RGB_MOD","RGB_RMOD"],["RGB_HUI","RGB_HUD"],["RGB_VAI","RGB_VAD"],["RGB_SAI","RGB_SAD"]],[["RGB_MOD","RGB_RMOD"],["RGB_HUI","RGB_HUD"],["RGB_VAI","RGB_VAD"],["RGB_SAI","RGB_SAD"]],[["KC_TRNS","KC_TRNS"],["KC_TRNS","KC_TRNS"],["KC_TRNS","KC_TRNS"],["KC_TRNS","KC_TRNS"]],[["KC_TRNS","KC_TRNS"],["KC_TRNS","KC_TRNS"],["KC_TRNS","KC_TRNS"],["KC_TRNS","KC_TRNS"]]],"layout_options":0,"macro":[[["down","KC_LSHIFT"],["up","KC_LSHIFT"],["delay",30],["down","KC_LSHIFT"],["up","KC_LSHIFT"]],[["down","KC_LCTRL","KC_SPACE"],["up","KC_LCTRL","KC_SPACE"]],[["down","KC_LALT","KC_SPACE"],["up","KC_LALT","KC_SPACE"]],[["down","KC_LGUI","KC_LALT","KC_C"],["up","KC_LGUI","KC_LALT","KC_C"]],[["down","KC_LGUI","KC_LSHIFT","KC_4"],["up","KC_LGUI","KC_LSHIFT","KC_4"]],[["tap","KC_LALT","KC_LALT"]],[],[],[],[],[],[],[],[],[],[]],"vial_protocol":6,"via_protocol":9,"tap_dance":[["M1","M2","M0","M5",250],["KC_D","KC_F11","KC_NO","KC_NO",300],["KC_C","M3","KC_NO","M4",300],["KC_SPACE","MO(1)","KC_NO","TG(1)",200],["KC_ESCAPE","MO(3)","KC_NO","TG(3)",200],["KC_BSPACE","MO(4)","KC_NO","TG(4)",175],["KC_TAB","MO(2)","KC_NO","TG(2)",300],["KC_Z","KC_NO","LCTL(KC_GRAVE)","KC_NO",200],["KC_NO","KC_NO","KC_NO","KC_NO",200],["KC_NO","KC_NO","KC_NO","KC_NO",200],["KC_NO","KC_NO","KC_NO","KC_NO",300],["KC_NO","KC_NO","KC_NO","KC_NO",200],["KC_NO","KC_NO","KC_NO","KC_NO",200],["KC_NO","KC_NO","KC_NO","KC_NO",200],["KC_NO","KC_NO","KC_NO","KC_NO",200],["KC_NO","KC_NO","KC_NO","KC_NO",200],["KC_NO","KC_NO","KC_NO","KC_NO",200],["KC_NO","KC_NO","KC_NO","KC_NO",200],["KC_NO","KC_NO","KC_NO","KC_NO",200],["KC_NO","KC_NO","KC_NO","KC_NO",200],["KC_NO","KC_NO","KC_NO","KC_NO",200],["KC_NO","KC_NO","KC_NO","KC_NO",200],["KC_NO","KC_NO","KC_NO","KC_NO",200],["KC_NO","KC_NO","KC_NO","KC_NO",200],["KC_NO","KC_NO","KC_NO","KC_NO",200],["KC_NO","KC_NO","KC_NO","KC_NO",200],["KC_NO","KC_NO","KC_NO","KC_NO",200],["KC_NO","KC_NO","KC_NO","KC_NO",200],["KC_NO","KC_NO","KC_NO","KC_NO",200],["KC_NO","KC_NO","KC_NO","KC_NO",200],["KC_NO","KC_NO","KC_NO","KC_NO",200],["KC_NO","KC_NO","KC_NO","KC_NO",200]],"combo":[["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"],["KC_NO","KC_NO","KC_NO","KC_NO","KC_NO"]],"key_override":[{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7},{"trigger":"KC_NO","replacement":"KC_NO","layers":65535,"trigger_mods":0,"negative_mod_mask":0,"suppressed_mods":0,"options":7}],"alt_repeat_key":[],"settings":{"1":0,"2":50,"3":0,"4":175,"5":5,"6":5000,"7":200,"8":3,"9":10,"10":20,"11":4,"12":10,"13":30,"14":10,"15":80,"16":8,"17":40,"18":0,"19":80,"20":5,"21":0}}</script>
+<!-- @default-vil-end -->
+<!-- @default-notes-start -->
+<script type="application/json" id="default-notes">{"uid":5010774632021243529,"notes":{"M3":"Alfred clipboard","M4":"Screenshot","KC_F11":"Show desktop"}}</script>
+<!-- @default-notes-end -->
+
+<script id="core">
+// @core-start
+// Pure parsing and labelling. No DOM. Tested by test/parse.test.mjs.
+const VL = (() => {
+  'use strict';
+
+  // ---------- basic keycodes ----------
+  const BASIC = {};
+  const add = (label, names, full) => names.split(' ').forEach(n => { BASIC[n] = { label, full: full || label }; });
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(ch => add(ch, 'KC_' + ch));
+  '1234567890'.split('').forEach(d => add(d, 'KC_' + d));
+  for (let i = 1; i <= 24; i++) add('F' + i, 'KC_F' + i);
+  add('Enter', 'KC_ENTER KC_ENT');
+  add('Esc', 'KC_ESCAPE KC_ESC', 'Escape');
+  add('Bksp', 'KC_BSPACE KC_BSPC KC_BACKSPACE', 'Backspace');
+  add('Tab', 'KC_TAB');
+  add('Space', 'KC_SPACE KC_SPC');
+  add('-', 'KC_MINUS KC_MINS', 'Minus');
+  add('=', 'KC_EQUAL KC_EQL', 'Equals');
+  add('[', 'KC_LBRACKET KC_LBRC KC_LEFT_BRACKET', 'Left bracket');
+  add(']', 'KC_RBRACKET KC_RBRC KC_RIGHT_BRACKET', 'Right bracket');
+  add('\\', 'KC_BSLASH KC_BSLS KC_BACKSLASH', 'Backslash');
+  add('#', 'KC_NONUS_HASH KC_NUHS', 'Hash (non-US)');
+  add(';', 'KC_SCOLON KC_SCLN KC_SEMICOLON', 'Semicolon');
+  add("'", 'KC_QUOTE KC_QUOT', 'Quote');
+  add('`', 'KC_GRAVE KC_GRV', 'Grave / backtick');
+  add(',', 'KC_COMMA KC_COMM', 'Comma');
+  add('.', 'KC_DOT', 'Full stop');
+  add('/', 'KC_SLASH KC_SLSH', 'Slash');
+  add('\\', 'KC_NONUS_BSLASH KC_NUBS KC_NONUS_BACKSLASH', 'Backslash (non-US)');
+  add('Caps Lock', 'KC_CAPSLOCK KC_CAPS KC_CAPS_LOCK KC_CLCK');
+  add('PrtSc', 'KC_PSCREEN KC_PSCR KC_PRINT_SCREEN', 'Print Screen');
+  add('ScrLk', 'KC_SCROLLLOCK KC_SCRL KC_SCROLL_LOCK KC_BRMD', 'Scroll Lock');
+  add('Pause', 'KC_PAUSE KC_PAUS KC_BRK KC_BRMU');
+  add('Insert', 'KC_INSERT KC_INS');
+  add('Home', 'KC_HOME');
+  add('Pg Up', 'KC_PGUP KC_PAGE_UP', 'Page Up');
+  add('Delete', 'KC_DELETE KC_DEL');
+  add('End', 'KC_END');
+  add('Pg Dn', 'KC_PGDOWN KC_PGDN KC_PAGE_DOWN', 'Page Down');
+  add('→', 'KC_RIGHT KC_RGHT', 'Right arrow');
+  add('←', 'KC_LEFT', 'Left arrow');
+  add('↓', 'KC_DOWN', 'Down arrow');
+  add('↑', 'KC_UP', 'Up arrow');
+  add('Num Lock', 'KC_NUMLOCK KC_NUM KC_NUM_LOCK KC_NLCK');
+  add('Menu', 'KC_APPLICATION KC_APP', 'Menu / application key');
+  // keypad
+  const KP = { SLASH: '/', ASTERISK: '*', MINUS: '-', PLUS: '+', ENTER: 'Enter', DOT: '.', EQUAL: '=', COMMA: ',' };
+  '1234567890'.split('').forEach(d => add('KP ' + d, 'KC_KP_' + d + ' KC_P' + d, 'Keypad ' + d));
+  Object.entries(KP).forEach(([k, v]) => add('KP ' + v, 'KC_KP_' + k, 'Keypad ' + v));
+  add('KP /', 'KC_PSLS'); add('KP *', 'KC_PAST'); add('KP -', 'KC_PMNS'); add('KP +', 'KC_PPLS'); add('KP Enter', 'KC_PENT'); add('KP .', 'KC_PDOT');
+  // shifted symbols
+  const SHIFTED = { TILD: '~', TILDE: '~', EXLM: '!', EXCLAIM: '!', AT: '@', HASH: '#', DLR: '$', DOLLAR: '$', PERC: '%', PERCENT: '%',
+    CIRC: '^', CIRCUMFLEX: '^', AMPR: '&', AMPERSAND: '&', ASTR: '*', ASTERISK: '*', LPRN: '(', LEFT_PAREN: '(', RPRN: ')', RIGHT_PAREN: ')',
+    UNDS: '_', UNDERSCORE: '_', PLUS: '+', LCBR: '{', LEFT_CURLY_BRACE: '{', RCBR: '}', RIGHT_CURLY_BRACE: '}', PIPE: '|',
+    COLN: ':', COLON: ':', DQUO: '"', DQT: '"', DOUBLE_QUOTE: '"', LT: '<', LABK: '<', LEFT_ANGLE_BRACKET: '<', GT: '>', RABK: '>',
+    RIGHT_ANGLE_BRACKET: '>', QUES: '?', QUESTION: '?' };
+  Object.entries(SHIFTED).forEach(([k, v]) => add(v, 'KC_' + k));
+  // media and system
+  add('Mute', 'KC_MUTE KC_AUDIO_MUTE KC__MUTE');
+  add('Vol +', 'KC_VOLU KC_AUDIO_VOL_UP KC__VOLUP KC_KB_VOLUME_UP', 'Volume up');
+  add('Vol -', 'KC_VOLD KC_AUDIO_VOL_DOWN KC__VOLDOWN KC_KB_VOLUME_DOWN', 'Volume down');
+  add('Next', 'KC_MNXT KC_MEDIA_NEXT_TRACK', 'Next track');
+  add('Prev', 'KC_MPRV KC_MEDIA_PREV_TRACK', 'Previous track');
+  add('Stop', 'KC_MSTP KC_MEDIA_STOP', 'Stop media');
+  add('Play', 'KC_MPLY KC_MEDIA_PLAY_PAUSE', 'Play / pause');
+  add('Fast fwd', 'KC_MFFD KC_MEDIA_FAST_FORWARD', 'Fast forward (next track on Mac)');
+  add('Rewind', 'KC_MRWD KC_MEDIA_REWIND', 'Rewind (previous track on Mac)');
+  add('Bright +', 'KC_BRIU KC_BRIGHTNESS_UP', 'Screen brightness up');
+  add('Bright -', 'KC_BRID KC_BRIGHTNESS_DOWN', 'Screen brightness down');
+  add('Eject', 'KC_EJCT KC_MEDIA_EJECT');
+  add('Media', 'KC_MSEL KC_MEDIA_SELECT', 'Media select');
+  add('Calc', 'KC_CALC KC_CALCULATOR', 'Calculator');
+  add('Mail', 'KC_MAIL');
+  add('My PC', 'KC_MYCM KC_MY_COMPUTER');
+  add('Search', 'KC_WSCH KC_WWW_SEARCH', 'Browser search');
+  add('Web home', 'KC_WHOM KC_WWW_HOME', 'Browser home');
+  add('Web back', 'KC_WBAK KC_WWW_BACK', 'Browser back');
+  add('Web fwd', 'KC_WFWD KC_WWW_FORWARD', 'Browser forward');
+  add('Web stop', 'KC_WSTP KC_WWW_STOP');
+  add('Refresh', 'KC_WREF KC_WWW_REFRESH', 'Browser refresh');
+  add('Favs', 'KC_WFAV KC_WWW_FAVORITES', 'Browser favourites');
+  add('Power', 'KC_PWR KC_SYSTEM_POWER');
+  add('Sleep', 'KC_SLEP KC_SYSTEM_SLEEP');
+  add('Wake', 'KC_WAKE KC_SYSTEM_WAKE');
+  add('Mission Ctrl', 'KC_MCTL KC_MISSION_CONTROL', 'Mission Control');
+  add('Launchpad', 'KC_LPAD KC_LAUNCHPAD');
+  // mouse
+  add('Mouse ↑', 'KC_MS_U KC_MS_UP MS_UP', 'Move mouse up');
+  add('Mouse ↓', 'KC_MS_D KC_MS_DOWN MS_DOWN', 'Move mouse down');
+  add('Mouse ←', 'KC_MS_L KC_MS_LEFT MS_LEFT', 'Move mouse left');
+  add('Mouse →', 'KC_MS_R KC_MS_RIGHT MS_RGHT', 'Move mouse right');
+  add('L click', 'KC_BTN1 KC_MS_BTN1 MS_BTN1', 'Left mouse button');
+  add('R click', 'KC_BTN2 KC_MS_BTN2 MS_BTN2', 'Right mouse button');
+  add('M click', 'KC_BTN3 KC_MS_BTN3 MS_BTN3', 'Middle mouse button');
+  add('Btn 4', 'KC_BTN4 KC_MS_BTN4 MS_BTN4', 'Mouse button 4 (back)');
+  add('Btn 5', 'KC_BTN5 KC_MS_BTN5 MS_BTN5', 'Mouse button 5 (forward)');
+  add('Scroll ↑', 'KC_WH_U KC_MS_WH_UP MS_WHLU', 'Scroll up');
+  add('Scroll ↓', 'KC_WH_D KC_MS_WH_DOWN MS_WHLD', 'Scroll down');
+  add('Scroll ←', 'KC_WH_L KC_MS_WH_LEFT MS_WHLL', 'Scroll left');
+  add('Scroll →', 'KC_WH_R KC_MS_WH_RIGHT MS_WHLR', 'Scroll right');
+  add('Accel 0', 'KC_ACL0 KC_MS_ACCEL0 MS_ACL0', 'Mouse speed slow');
+  add('Accel 1', 'KC_ACL1 KC_MS_ACCEL1 MS_ACL1', 'Mouse speed medium');
+  add('Accel 2', 'KC_ACL2 KC_MS_ACCEL2 MS_ACL2', 'Mouse speed fast');
+  // lighting
+  add('RGB on/off', 'RGB_TOG RM_TOGG UG_TOGG', 'Toggle RGB lighting');
+  add('RGB mode +', 'RGB_MOD RM_NEXT UG_NEXT', 'Next RGB effect');
+  add('RGB mode -', 'RGB_RMOD RM_PREV UG_PREV', 'Previous RGB effect');
+  add('Hue +', 'RGB_HUI RM_HUEU UG_HUEU', 'RGB hue up');
+  add('Hue -', 'RGB_HUD RM_HUED UG_HUED', 'RGB hue down');
+  add('Sat +', 'RGB_SAI RM_SATU UG_SATU', 'RGB saturation up');
+  add('Sat -', 'RGB_SAD RM_SATD UG_SATD', 'RGB saturation down');
+  add('RGB bright +', 'RGB_VAI RM_VALU UG_VALU', 'RGB brightness up');
+  add('RGB bright -', 'RGB_VAD RM_VALD UG_VALD', 'RGB brightness down');
+  add('RGB speed +', 'RGB_SPI RM_SPDU UG_SPDU', 'RGB effect speed up');
+  add('RGB speed -', 'RGB_SPD RM_SPDD UG_SPDD', 'RGB effect speed down');
+  add('Backlight', 'BL_TOGG BL_TOGGLE', 'Toggle backlight');
+  // quantum
+  add('Boot', 'QK_BOOT RESET QK_BOOTLOADER', 'Bootloader (for flashing firmware)');
+  add('Reboot', 'QK_REBOOT QK_RBT');
+  add('Clear EEPROM', 'QK_CLEAR_EEPROM EE_CLR EEPROM_RESET', 'Clear saved settings');
+  add('Layer lock', 'QK_LAYER_LOCK QK_LLCK', 'Layer lock: keeps the current layer on after you let go of its key');
+  add('Repeat', 'QK_REP QK_REPEAT_KEY', 'Repeat the last key');
+  add('Alt repeat', 'QK_AREP QK_ALT_REPEAT_KEY', 'Alternate repeat of the last key');
+  add('Caps Word', 'CW_TOGG QK_CAPS_WORD_TOGGLE', 'Caps Word: capitals until the end of the word');
+  add('Esc / `', 'QK_GESC KC_GESC QK_GRAVE_ESCAPE', 'Escape, or ` with Shift or GUI');
+  add('Leader', 'QK_LEAD KC_LEAD QK_LEADER');
+  add('( / Shift', 'KC_LSPO SC_LSPO', 'Tap: (, hold: Shift');
+  add(') / Shift', 'KC_RSPC SC_RSPC', 'Tap: ), hold: Shift');
+  add('Enter / Shift', 'KC_SFTENT SC_SENT', 'Tap: Enter, hold: Shift');
+  add('Tri-layer 1', 'FN_MO13 QK_TRI_LAYER_LOWER', 'Tri-layer lower');
+  add('Tri-layer 2', 'FN_MO23 QK_TRI_LAYER_UPPER', 'Tri-layer upper');
+  add('Auto shift', 'KC_ASTG QK_AUTO_SHIFT_TOGGLE', 'Toggle auto shift');
+  add('Combos on/off', 'CM_TOGG QK_COMBO_TOGGLE', 'Toggle combos');
+
+  const MODKEYS = {
+    KC_LCTRL: 'C', KC_LCTL: 'C', KC_LEFT_CTRL: 'C', KC_RCTRL: 'C', KC_RCTL: 'C', KC_RIGHT_CTRL: 'C',
+    KC_LSHIFT: 'S', KC_LSFT: 'S', KC_LEFT_SHIFT: 'S', KC_RSHIFT: 'S', KC_RSFT: 'S', KC_RIGHT_SHIFT: 'S',
+    KC_LALT: 'A', KC_LOPT: 'A', KC_LEFT_ALT: 'A', KC_RALT: 'A', KC_ROPT: 'A', KC_ALGR: 'A', KC_RIGHT_ALT: 'A',
+    KC_LGUI: 'G', KC_LCMD: 'G', KC_LWIN: 'G', KC_LEFT_GUI: 'G', KC_RGUI: 'G', KC_RCMD: 'G', KC_RWIN: 'G', KC_RIGHT_GUI: 'G'
+  };
+
+  // Modifier-wrapping functions, e.g. LGUI(KC_Z). Value: set of C S A G.
+  const MODFN = {
+    LCTL: 'C', C: 'C', RCTL: 'C', CTL: 'C', LSFT: 'S', S: 'S', RSFT: 'S', SFT: 'S',
+    LALT: 'A', A: 'A', RALT: 'A', ALGR: 'A', LOPT: 'A', ROPT: 'A', ALT: 'A', OPT: 'A',
+    LGUI: 'G', G: 'G', RGUI: 'G', LCMD: 'G', RCMD: 'G', LWIN: 'G', RWIN: 'G', GUI: 'G', CMD: 'G', WIN: 'G',
+    SGUI: 'SG', SCMD: 'SG', SWIN: 'SG', LSG: 'SG', RSG: 'SG', LCA: 'CA', RCA: 'CA', LSA: 'SA', RSA: 'SA',
+    LCS: 'CS', RCS: 'CS', C_S: 'CS', LCG: 'CG', RCG: 'CG', LAG: 'AG', RAG: 'AG', LCAG: 'CAG', RCAG: 'CAG',
+    LSAG: 'SAG', RSAG: 'SAG', MEH: 'CSA', HYPR: 'CSAG', ALL: 'CSAG'
+  };
+  const MODCONST = {
+    MOD_LCTL: 'C', MOD_RCTL: 'C', MOD_LSFT: 'S', MOD_RSFT: 'S', MOD_LALT: 'A', MOD_RALT: 'A',
+    MOD_LGUI: 'G', MOD_RGUI: 'G', MOD_MEH: 'CSA', MOD_HYPR: 'CSAG'
+  };
+
+  const modSet = s => ({ C: s.includes('C'), S: s.includes('S'), A: s.includes('A'), G: s.includes('G') });
+  const mergeMods = (a, b) => ({ C: a.C || b.C, S: a.S || b.S, A: a.A || b.A, G: a.G || b.G });
+  const emptyMods = () => ({ C: false, S: false, A: false, G: false });
+  const anyMods = m => m.C || m.S || m.A || m.G;
+
+  const WORDS = { mac: { C: 'Ctrl', A: 'Opt', S: 'Shift', G: 'Cmd' }, pc: { C: 'Ctrl', S: 'Shift', A: 'Alt', G: 'Win' } };
+  const SYMS = { C: '⌃', A: '⌥', S: '⇧', G: '⌘' };
+  const ORDER = { mac: ['C', 'A', 'S', 'G'], pc: ['C', 'S', 'A', 'G'] };
+
+  function modWords(m, os) {
+    if (m.C && m.S && m.A && m.G) return 'Hyper';
+    if (m.C && m.S && m.A && !m.G) return 'Meh';
+    return ORDER[os].filter(k => m[k]).map(k => WORDS[os][k]).join('+');
+  }
+  function chordLabel(m, key, os) {
+    if (os === 'mac') {
+      const s = ORDER.mac.filter(k => m[k]).map(k => SYMS[k]).join('');
+      return s + (key ? (key.length > 1 && !/^[←-↓]$/.test(key) ? ' ' + key : key) : '');
+    }
+    const w = ORDER.pc.filter(k => m[k]).map(k => WORDS.pc[k]);
+    if (key) w.push(key);
+    return w.join('+');
+  }
+  function modFull(m, os) {
+    return ORDER[os].filter(k => m[k]).map(k => WORDS[os][k]).join(' + ');
+  }
+
+  // Well-known shortcut names. Keyed by chord label.
+  const FRIENDLY = {
+    mac: {
+      '⌘Z': 'Undo', '⇧⌘Z': 'Redo', '⌘X': 'Cut', '⌘C': 'Copy', '⌘V': 'Paste',
+      '⌘A': 'Select all', '⌘S': 'Save', '⌘Q': 'Quit', '⌘W': 'Close', '⌘T': 'New tab',
+      '⌘N': 'New', '⌘F': 'Find', '⌘[': 'Back', '⌘]': 'Forward', '⇧⌘[': 'Prev tab',
+      '⇧⌘]': 'Next tab', '⌘`': 'Next win', '⇧⌘`': 'Prev win', '⌃⌘Q': 'Lock',
+      '⌘ Space': 'Spotlight', '⇧⌘3': 'Screenshot', '⇧⌘4': 'Snip area', '⇧⌘5': 'Screen tool',
+      '⌘ Tab': 'App switch', '⌃↑': 'Mission Ctrl', '⌃↓': 'App windows', '⌃←': 'Space left',
+      '⌃→': 'Space right', '⌃⌘F': 'Full screen', '⌘,': 'Settings', '⌘H': 'Hide app',
+      '⌘M': 'Minimise', '⌘R': 'Reload', '⌘P': 'Print', '⌘O': 'Open'
+    },
+    pc: {
+      'Ctrl+Z': 'Undo', 'Ctrl+Y': 'Redo', 'Ctrl+Shift+Z': 'Redo', 'Ctrl+X': 'Cut', 'Ctrl+C': 'Copy', 'Ctrl+V': 'Paste',
+      'Ctrl+A': 'Select all', 'Ctrl+S': 'Save', 'Ctrl+F': 'Find', 'Ctrl+W': 'Close', 'Ctrl+T': 'New tab', 'Alt+F4': 'Quit',
+      'Ctrl+Tab': 'Next tab', 'Ctrl+Shift+Tab': 'Prev tab', 'Alt+Tab': 'App switch', 'Win+L': 'Lock'
+    }
+  };
+
+  // ---------- expression parser ----------
+  function parse(code) {
+    if (code === -1 || code === null || code === undefined) return null;
+    if (typeof code === 'number') return { atom: '0x' + code.toString(16).padStart(4, '0') };
+    const s = String(code).trim();
+    const m = s.match(/^([A-Za-z0-9_]+)\((.*)\)$/s);
+    if (!m) return { atom: s };
+    const args = [];
+    let depth = 0, cur = '';
+    for (const ch of m[2]) {
+      if (ch === '(') depth++;
+      if (ch === ')') depth--;
+      if (ch === ',' && depth === 0) { args.push(cur.trim()); cur = ''; continue; }
+      cur += ch;
+    }
+    if (cur.trim() !== '') args.push(cur.trim());
+    return { fn: m[1], args };
+  }
+
+  function prettify(name) {
+    let s = name.replace(/^(KC|QK|RGB|RM|UG|BL|AU|MI|MAGIC|SC|HF|HPT)_/, '');
+    s = s.replace(/_/g, ' ').toLowerCase();
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  const num = s => { const n = parseInt(s, 10); return Number.isFinite(n) ? n : null; };
+  const parseModConst = s => s.split('|').map(x => x.trim()).reduce((acc, x) => mergeMods(acc, modSet(MODCONST[x] || '')), emptyMods());
+
+  // ---------- describing one keycode ----------
+  // Returns { kind, tap, sub, hold, holdLayer, extras:[{label,text}], full, layerLinks:[{layer,how}] }
+  // kind: absent | none | trans | key | layer
+  // parts: the actions on this key that can be given your own name (a tap dance has up to four).
+  // ctx.notes: { rawKeycode: 'your name' }. A note replaces the label wherever that keycode appears,
+  // including inside tap dances; the original label moves to `sub` and into `full`.
+  function describe(code, ctx, depth) {
+    const out = describeCode(code, ctx, depth);
+    if (out.kind === 'absent' || out.kind === 'none' || out.kind === 'trans') return out;
+    const raw = typeof code === 'string' ? code.trim() : null;
+    if (!out.parts) out.parts = raw ? [{ label: '', code: raw }] : [];
+    const note = raw && ctx.notes ? ctx.notes[raw] : '';
+    if (note) {
+      out.note = note; out.sub = out.tap || out.sub; out.tap = note;
+      out.full = note + ' (your name). ' + out.full;
+    }
+    return out;
+  }
+  function describeCode(code, ctx, depth) {
+    depth = depth || 0;
+    const os = ctx.os || 'mac';
+    const out = { kind: 'key', tap: '', sub: null, hold: null, holdLayer: null, extras: [], full: '', layerLinks: [], raw: code };
+    const node = parse(code);
+    if (!node) { out.kind = 'absent'; return out; }
+    if (node.atom !== undefined) {
+      const a = node.atom;
+      if (a === 'KC_NO' || a === 'XXXXXXX' || a === 'KC_NONE' || a === '0x0000') { out.kind = 'none'; out.full = 'Nothing'; return out; }
+      if (a === 'KC_TRNS' || a === 'KC_TRANSPARENT' || a === '_______' || a === '0x0001') { out.kind = 'trans'; out.full = 'Transparent: falls through to the layer below'; return out; }
+      if (MODKEYS[a]) {
+        const m = modSet(MODKEYS[a]);
+        const right = /(^KC_R|RIGHT|ALGR)/.test(a);
+        out.tap = modWords(m, os);
+        out.full = (right ? 'Right ' : 'Left ') + modFull(m, os);
+        out.isMod = true;
+        return out;
+      }
+      const mac = a.match(/^(?:M|MACRO|QK_MACRO_|MACRO_)(\d+)$/);
+      if (mac) {
+        const n = +mac[1];
+        const mc = macroText(n, ctx);
+        out.tap = mc.short; out.sub = 'macro ' + n; out.full = 'Macro ' + n + ': ' + mc.long;
+        return out;
+      }
+      const u = a.match(/^(?:USER|QK_KB_|QK_USER_)(\d+)$/);
+      if (u) { out.tap = 'User ' + +u[1]; out.full = 'Custom keycode ' + a; return out; }
+      if (BASIC[a]) { out.tap = BASIC[a].label; out.full = BASIC[a].full; return out; }
+      if (/^0x[0-9a-f]+$/i.test(a)) { out.tap = a; out.full = 'Raw keycode ' + a + ' (not recognised)'; return out; }
+      out.tap = prettify(a); out.full = a;
+      return out;
+    }
+    const fn = node.fn, args = node.args;
+    const layerName = n => (ctx.layerName ? ctx.layerName(n) : 'Layer ' + n);
+    const inner = c => describe(c, ctx, depth + 1);
+
+    // layer functions
+    let lt = fn.match(/^LT(\d+)$/);
+    if (fn === 'LT' || lt) {
+      const n = lt ? +lt[1] : num(args[0]);
+      const k = inner(lt ? args[0] : args[1]);
+      out.kind = 'key';
+      out.tap = k.tap; out.sub = k.sub; out.hold = layerName(n); out.holdLayer = n;
+      out.full = 'Tap: ' + k.full + '. Hold: ' + layerName(n) + ' layer while held';
+      out.layerLinks.push({ layer: n, how: 'hold' });
+      return out;
+    }
+    const LAYERFN = {
+      MO: ['hold', n => layerName(n), n => 'Hold for the ' + layerName(n) + ' layer'],
+      TG: ['toggle', n => 'Toggle ' + layerName(n), n => 'Toggle the ' + layerName(n) + ' layer on or off'],
+      TO: ['to', n => 'To ' + layerName(n), n => 'Switch to the ' + layerName(n) + ' layer (and stay there)'],
+      TT: ['hold', n => layerName(n) + ' (tt)', n => 'Hold for ' + layerName(n) + ', or tap repeatedly to toggle it'],
+      OSL: ['oneshot', n => 'OS ' + layerName(n), n => 'One-shot ' + layerName(n) + ': the next key press uses that layer'],
+      DF: ['default', n => 'Default ' + layerName(n), n => 'Make ' + layerName(n) + ' the default layer'],
+      PDF: ['default', n => 'Default ' + layerName(n), n => 'Make ' + layerName(n) + ' the default layer (saved)']
+    };
+    if (LAYERFN[fn]) {
+      const n = num(args[0]);
+      const [how, lab, full] = LAYERFN[fn];
+      out.kind = 'layer'; out.tap = lab(n); out.full = full(n); out.layerRef = n; out.layerHow = how;
+      if (how === 'hold') out.holdLayer = n;
+      out.layerLinks.push({ layer: n, how });
+      return out;
+    }
+    if (fn === 'LM') {
+      const n = num(args[0]); const m = parseModConst(args[1] || '');
+      out.kind = 'layer'; out.tap = layerName(n) + '+' + modWords(m, os); out.holdLayer = n; out.layerRef = n;
+      out.full = 'Hold for the ' + layerName(n) + ' layer with ' + modFull(m, os) + ' held';
+      out.layerLinks.push({ layer: n, how: 'hold' });
+      return out;
+    }
+    if (fn === 'OSM') {
+      const m = parseModConst(args[0] || '');
+      out.tap = modWords(m, os); out.sub = 'one-shot'; out.isMod = true;
+      out.full = 'One-shot ' + modFull(m, os) + ': applies to the next key press';
+      return out;
+    }
+    if (fn === 'TD') {
+      return tapDance(num(args[0]), ctx, depth, out);
+    }
+    // mod-tap: MT(mods, kc) or LSFT_T(kc)
+    const mtName = fn.endsWith('_T') ? fn.slice(0, -2) : null;
+    if (fn === 'MT' || (mtName && MODFN[mtName] !== undefined)) {
+      const m = fn === 'MT' ? parseModConst(args[0]) : modSet(MODFN[mtName]);
+      const k = inner(fn === 'MT' ? args[1] : args[0]);
+      out.tap = k.tap; out.sub = k.sub; out.hold = modWords(m, os); out.holdIsMod = true;
+      out.full = 'Tap: ' + k.full + '. Hold: ' + modFull(m, os);
+      return out;
+    }
+    // modifier-wrapped key, e.g. LGUI(KC_Z) or LCTL(LSFT(KC_A))
+    if (MODFN[fn] !== undefined) {
+      let m = modSet(MODFN[fn]);
+      let target = args[0];
+      let t = parse(target);
+      while (t && t.fn && MODFN[t.fn] !== undefined) { m = mergeMods(m, modSet(MODFN[t.fn])); target = t.args[0]; t = parse(target); }
+      const k = inner(target);
+      const chord = chordLabel(m, k.tap, os);
+      const friendly = FRIENDLY[os][chord];
+      out.tap = friendly || chord; out.sub = friendly ? chord : null;
+      out.full = (friendly ? friendly + ' (' + chord + ')' : chord) + ': ' + modFull(m, os) + ' + ' + k.full;
+      out.chord = chord;
+      return out;
+    }
+    out.tap = fn + '(' + args.join(', ') + ')'; out.full = 'Unrecognised: ' + out.tap;
+    return out;
+  }
+
+  function tapDance(n, ctx, depth, out) {
+    const td = (ctx.vil && ctx.vil.tap_dance && ctx.vil.tap_dance[n]) || null;
+    out.td = n;
+    if (!td || depth > 2) { out.tap = 'TD ' + n; out.full = 'Tap dance ' + n; return out; }
+    const [tap, hold, dtap, taphold, term] = td;
+    const d = c => describe(c, ctx, depth + 1);
+    const T = d(tap), H = d(hold), D = d(dtap), TH = d(taphold);
+    const used = x => x.kind !== 'none' && x.kind !== 'absent' && x.kind !== 'trans';
+    out.parts = [['Tap', tap, T], ['Hold', hold, H], ['Double-tap', dtap, D], ['Tap then hold', taphold, TH]]
+      .filter(p => used(p[2]) && typeof p[1] === 'string').map(p => ({ label: p[0], code: p[1].trim() }));
+    out.tap = used(T) ? T.tap : 'TD ' + n;
+    out.sub = used(T) ? T.sub : null;
+    if (used(H)) {
+      if (H.kind === 'layer' && H.holdLayer !== null) { out.hold = H.tap; out.holdLayer = H.holdLayer; }
+      else { out.hold = H.tap; out.holdIsMod = !!H.isMod; }
+    }
+    if (used(D)) out.extras.push({ label: '2x', text: D.tap, full: D.full });
+    if (used(TH)) out.extras.push({ label: 'tap+hold', text: TH.tap, full: TH.full });
+    const parts = [];
+    if (used(T)) parts.push('Tap: ' + T.full);
+    if (used(H)) parts.push('Hold: ' + H.full);
+    if (used(D)) parts.push('Double-tap: ' + D.full);
+    if (used(TH)) parts.push('Tap then hold: ' + TH.full);
+    out.full = 'Tap dance ' + n + '. ' + parts.join('. ') + (term ? '. (' + term + ' ms)' : '');
+    const link = (x, how) => { if (x.kind === 'layer' && x.layerRef !== undefined) out.layerLinks.push({ layer: x.layerRef, how: how === 'hold' ? x.layerHow : how }); };
+    link(H, 'hold'); link(D, 'double-tap'); link(TH, 'tap-hold');
+    if (T.kind === 'layer') out.layerLinks.push({ layer: T.layerRef, how: T.layerHow });
+    return out;
+  }
+
+  // ---------- macros ----------
+  function macroText(n, ctx) {
+    const mac = ctx.vil && ctx.vil.macro && ctx.vil.macro[n];
+    if (!mac || !mac.length) return { short: 'Macro ' + n, long: 'empty' };
+    const os = ctx.os || 'mac';
+    const steps = [];
+    let held = []; let emitted = true;
+    const labelOf = kcs => {
+      let m = emptyMods(); const keys = [];
+      kcs.forEach(k => { if (MODKEYS[k]) m = mergeMods(m, modSet(MODKEYS[k])); else keys.push(describe(k, { os, vil: ctx.vil }, 3).tap); });
+      if (!keys.length) return modWords(m, os);
+      const ch = chordLabel(m, keys.join(' '), os);
+      return anyMods(m) ? (FRIENDLY[os][ch] ? FRIENDLY[os][ch] + ' (' + ch + ')' : ch) : ch;
+    };
+    for (const act of mac) {
+      const [type, ...rest] = act;
+      if (type === 'down') { held = held.concat(rest); emitted = false; }
+      else if (type === 'up') { if (!emitted && held.length) { steps.push(labelOf(held)); emitted = true; } held = held.filter(k => !rest.includes(k)); }
+      else if (type === 'tap') { rest.forEach(k => steps.push(labelOf(held.concat([k])))); }
+      else if (type === 'text') { steps.push('"' + rest.join('') + '"'); }
+    }
+    if (!emitted && held.length) steps.push(labelOf(held));
+    // collapse repeats
+    const out = [];
+    steps.forEach(s => { const last = out[out.length - 1]; if (last && last.s === s) last.n++; else out.push({ s, n: 1 }); });
+    const parts = out.map(o => o.n > 1 ? o.s + ' x' + o.n : o.s);
+    const long = parts.join(', then ');
+    const short = parts.length === 1 ? parts[0].replace(/ \(.+\)$/, '') : parts.join(', ');
+    return { short: short || 'Macro ' + n, long: long || 'empty' };
+  }
+
+  // ---------- geometry ----------
+  // The box a key covers once turned by its angle (rot, degrees, about its centre), in key units.
+  function bounds(k) {
+    const a = (k.rot || 0) * Math.PI / 180, c = Math.abs(Math.cos(a)), s = Math.abs(Math.sin(a));
+    const ex = (k.w * c + k.h * s) / 2, ey = (k.w * s + k.h * c) / 2;
+    const cx = k.x + k.w / 2, cy = k.y + k.h / 2;
+    return { x0: cx - ex, y0: cy - ey, x1: cx + ex, y1: cy + ey };
+  }
+  // Returns positions [{r, c, x, y, w, h, rot, side, finger, row}] in key units. x and y are the
+  // top-left of the key before it is turned by rot.
+  function geometry(layout, opts) {
+    const rows = layout[0].length;
+    const cols = Math.max(...layout[0].map(r => r.length));
+    const exists = (r, c) => layout.some(L => L[r] && L[r][c] !== -1 && L[r][c] !== undefined);
+    const usedAnywhere = (r, c) => layout.some(L => {
+      const v = L[r] && L[r][c];
+      return v !== -1 && v !== undefined && v !== 'KC_NO' && v !== 'KC_TRNS' && v !== 'KC_TRANSPARENT';
+    });
+    const keys = [];
+    const corne = rows === 8 && (cols === 6 || cols === 7);
+    if (corne) {
+      const stagger = [0.375, 0.375, 0.125, 0, 0.125, 0.25];
+      const fingers = ['pinky (outer)', 'pinky', 'ring', 'middle', 'index', 'index (inner)', 'inner extra'];
+      const showExtra = cols === 7 && [0, 1, 2].some(r => (exists(r, 6) && usedAnywhere(r, 6)) || (exists(r + 4, 6) && usedAnywhere(r + 4, 6)));
+      // Thumb keys, outer to inner: [column, centre x, centre y, angle]. Three square keys tucked in
+      // close under the inner columns in a gentle, near-straight row, as on the Corne itself (not a
+      // wide fan), so the halves can sit close together. With the rev4 inner column shown they
+      // move one step inward to sit under it, as they do on the board.
+      const tx = showExtra ? 0.75 : 0;
+      const thumbs = [[3, 3.75 + tx, 3.74, 0], [4, 4.8 + tx, 3.8, 4], [5, 5.85 + tx, 3.9, 8]];
+      const rowNames = ['top row', 'home row', 'bottom row'];
+      const thumbNames = { 3: 'thumb (outer)', 4: 'thumb (middle)', 5: 'thumb (inner)' };
+      // Lay out the left half first, then mirror it for the right, a small gap apart.
+      const half = [];
+      const place = (r, c, x, y, finger, rowName, rot) => { if (exists(r, c) || exists(r + 4, c)) half.push({ r, c, x, y, finger, row: rowName, rot: rot || 0 }); };
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 6; c++) place(r, c, c, r + stagger[c], fingers[c], rowNames[r]);
+        if (showExtra) place(r, 6, 6, r + 0.55, fingers[6], rowNames[r]);
+      }
+      thumbs.forEach(([c, cx, cy, rot]) => place(3, c, cx - 0.5, cy - 0.5, thumbNames[c], 'thumb row', rot));
+      const halfW = Math.max(...half.map(k => bounds({ ...k, w: 1, h: 1 }).x1));
+      const gap = 0.35;
+      const total = halfW * 2 + gap;
+      for (const side of ['left', 'right']) {
+        const off = side === 'left' ? 0 : 4;
+        half.forEach(k => {
+          if (!exists(k.r + off, k.c)) return;
+          const X = side === 'left' ? k.x : total - 1 - k.x;
+          keys.push({ r: k.r + off, c: k.c, x: X, y: k.y, w: 1, h: 1, rot: side === 'left' ? k.rot : -k.rot, side, finger: k.finger, row: k.row });
+        });
+      }
+      return { keys, width: total, height: Math.max(...keys.map(k => bounds(k).y1)), split: true };
+    }
+    // Generic fallback: plain matrix grid.
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      if (exists(r, c)) keys.push({ r, c, x: c, y: r, w: 1, h: 1, side: 'matrix', finger: 'column ' + c, row: 'row ' + r });
+    }
+    return { keys, width: cols, height: rows, split: false };
+  }
+
+  // ---------- board size ----------
+  // Like an SVG viewBox: the key unit u (px) is the largest that fits the whole board in the width
+  // and height given. The halves sit side by side unless stacking them (left over right) gives
+  // bigger keys, as on a phone. Keys never go below MIN_U, where their words stop being legible;
+  // a window smaller than that scrolls instead. maxTall is how much taller than wide the keys may
+  // grow (up to TALL_MAX) when there is height to spare and a key needs it for its words.
+  const MIN_U = 48, SIDE_MAX = 112, STACK_MAX = 90, TALL_MAX = 1.35, LABEL_H = 22, HALF_GAP = 14;
+  function planSize(g, availW, availH) {
+    const left = g.keys.filter(k => k.side === 'left'), right = g.keys.filter(k => k.side === 'right');
+    const side = { stacked: false, u: Math.floor(Math.min(SIDE_MAX, availW / g.width, availH / g.height)) };
+    let best = side;
+    if (g.split && left.length && right.length) {
+      const rMin = Math.min(...right.map(k => bounds(k).x0));
+      const halfW = Math.max(...left.map(k => bounds(k).x1), ...right.map(k => bounds(k).x1 - rMin));
+      const u = Math.floor(Math.min(STACK_MAX, availW / halfW, (availH - 2 * LABEL_H - HALF_GAP) / (2 * g.height)));
+      if (u > side.u) best = { stacked: true, u, halfW, rMin };
+    }
+    best.u = Math.max(MIN_U, best.u);
+    const rows = best.stacked ? 2 * g.height : g.height;
+    const fixed = best.stacked ? 2 * LABEL_H + HALF_GAP : 0;
+    best.maxTall = Math.max(1, Math.min(TALL_MAX, Math.floor((availH - fixed) / (rows * best.u) * 100) / 100));
+    return best;
+  }
+
+  // ---------- layer names ----------
+  function guessLayerName(layer, index) {
+    if (index === 0) return 'Base';
+    const flat = [].concat(...layer).filter(v => typeof v === 'string');
+    const has = re => flat.filter(v => re.test(v)).length;
+    const scores = {
+      Nav: has(/^KC_(LEFT|RIGHT|RGHT|UP|DOWN|HOME|END|PGUP|PGDOWN|PGDN|PAGE_UP|PAGE_DOWN)$/) * 3,
+      Mouse: has(/^(KC_MS_|KC_WH_|KC_BTN|MS_)/) * 3,
+      Media: has(/^KC_(MUTE|VOLU|VOLD|MPLY|MNXT|MPRV|MFFD|MRWD|MSTP|BRIU|BRID|AUDIO_|MEDIA_)/) * 3,
+      Num: has(/^KC_(KP_)?[0-9]$/) >= 8 ? has(/^KC_(KP_)?[0-9]$/) : 0,
+      Fun: has(/^KC_F([1-9]|1[0-9]|2[0-4])$/) >= 6 ? has(/^KC_F([1-9]|1[0-9]|2[0-4])$/) : 0,
+      Sym: has(/^KC_(EXLM|AT|HASH|DLR|PERC|CIRC|AMPR|ASTR|LPRN|RPRN|UNDS|PLUS|LCBR|RCBR|PIPE|COLN|DQUO|TILD|LT|GT|QUES)$/) >= 6
+        ? has(/^KC_(EXLM|AT|HASH|DLR|PERC|CIRC|AMPR|ASTR|LPRN|RPRN|UNDS|PLUS|LCBR|RCBR|PIPE|COLN|DQUO|TILD|LT|GT|QUES)$/) : 0
+    };
+    let best = null, bestScore = 0;
+    for (const [k, v] of Object.entries(scores)) if (v > bestScore) { best = k; bestScore = v; }
+    return best && bestScore >= 6 ? best : 'Layer ' + index;
+  }
+
+  // ---------- whole-file analysis ----------
+  function analyse(vil, opts) {
+    opts = opts || {};
+    if (!vil || !Array.isArray(vil.layout) || !vil.layout.length) throw new Error('This file has no "layout". Is it a Vial .vil file?');
+    const os = opts.os || 'mac';
+    const L = vil.layout;
+    const geo = geometry(L, opts);
+    const guessed = L.map((layer, i) => guessLayerName(layer, i));
+    // de-duplicate names
+    const seen = {};
+    guessed.forEach((n, i) => { if (seen[n]) guessed[i] = n + ' ' + i; seen[n] = true; });
+    const names = L.map((_, i) => (opts.names && opts.names[i]) || guessed[i]);
+    const ctx = { os, vil, notes: opts.notes || null, layerName: n => (names[n] !== undefined ? names[n] : 'Layer ' + n) };
+    const cells = L.map(layer => geo.keys.map(k => describe(layer[k.r] ? layer[k.r][k.c] : -1, ctx)));
+    const layers = L.map((layer, i) => {
+      const empty = cells[i].every(d => d.kind === 'none' || d.kind === 'trans' || d.kind === 'absent');
+      return { index: i, name: names[i], guessed: guessed[i], empty, reach: [] };
+    });
+    // how each layer is reached (from any layer)
+    cells.forEach((row, li) => row.forEach((d, ki) => d.layerLinks.forEach(l => {
+      // Skip links back to the base layer via TO(0): they are exits, not ways in.
+      if (layers[l.layer] && l.layer !== li && !(l.how === 'to' && l.layer === 0)) {
+        layers[l.layer].reach.push({ key: ki, from: li, how: l.how });
+      }
+    })));
+    return { geo, layers, cells, os, ctx };
+  }
+
+  function reachText(layer, model) {
+    if (!layer.reach.length) return layer.index === 0 ? 'default' : '';
+    const r = layer.reach.find(x => x.from === 0) || layer.reach[0];
+    const cell = model.cells[0][r.key];
+    const keyName = cell && cell.tap ? cell.tap : 'a key';
+    const verb = { hold: 'hold', toggle: 'toggle', oneshot: 'tap', 'double-tap': 'double-tap', 'tap-hold': 'tap then hold', to: 'tap', default: 'tap' }[r.how] || r.how;
+    return verb + ' ' + keyName;
+  }
+
+  // ---------- colours ----------
+  // One source for the key faces and the layer colours, so the page and the tests read the same
+  // values. Every text colour must reach WCAG AA for small text (4.5:1) on every face a key can
+  // show: at rest, hovered (half pressed) and pinned (pressed). test/parse.test.mjs checks it.
+  const THEMES = {
+    dark: {
+      key: '#14181e', keyHover: '#101318', keyPressed: '#0c0f12', keySide: '#2a313b',
+      text: '#f4f6f8', muted: '#a9b3bf', faint: '#7c8794',
+      palette: ['#ffffff', '#4fd6ff', '#ffd23f', '#ff79d9', '#7dff8a', '#ffa24d', '#b89cff', '#ff7b7b', '#5cffe0', '#e0ff5c']
+    },
+    light: {
+      key: '#ffffff', keyHover: '#f3f4f6', keyPressed: '#e9ecef', keySide: '#9aa3ae',
+      text: '#0b0d10', muted: '#3d4652', faint: '#5d6671',
+      palette: ['#0b0d10', '#00658c', '#735300', '#a3127f', '#11701f', '#933f00', '#5530bf', '#a8141a', '#006d61', '#566800']
+    }
+  };
+  // WCAG 2 contrast ratio of two #rrggbb colours, 1 to 21.
+  function contrast(a, b) {
+    const lum = hex => {
+      const [r, g, bl] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+        .map(v => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
+      return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+    };
+    const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+    return (x + 0.05) / (y + 0.05);
+  }
+
+  return { parse, describe, analyse, geometry, bounds, guessLayerName, macroText, reachText, modWords, chordLabel, THEMES, contrast, planSize, MIN_U, LABEL_H, HALF_GAP };
+})();
+if (typeof module !== 'undefined') module.exports = VL;
+// @core-end
+</script>
+
+<script>
+(() => {
+  'use strict';
+  // Where "Built by Dileepa Ranawake" points. One place to change it.
+  const SITE_URL = 'https://dileeparanawake.com';
+  const LS = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* storage unavailable */ } },
+    remove(k) { try { localStorage.removeItem(k); } catch (e) { /* storage unavailable */ } }
+  };
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  const prefs = (() => { try { return JSON.parse(LS.get('vial-layers:prefs') || '{}') || {}; } catch (e) { return {}; } })();
+  const state = {
+    vil: null, fileName: '', model: null,
+    view: 'all', os: prefs.os || 'mac', theme: prefs.theme || 'dark',
+    hover: null, pinned: null, names: {}
+  };
+  const savePrefs = () => LS.set('vial-layers:prefs', JSON.stringify({ os: state.os, theme: state.theme }));
+  const theme = () => VL.THEMES[state.theme] || VL.THEMES.dark;
+  const colour = i => theme().palette[i % theme().palette.length];
+  function applyTheme() {
+    const th = theme(), root = document.documentElement;
+    root.setAttribute('data-theme', state.theme);
+    [['--key', th.key], ['--key-hover', th.keyHover], ['--key-pressed', th.keyPressed], ['--key-side', th.keySide],
+      ['--text', th.text], ['--muted', th.muted], ['--faint', th.faint]].forEach(([k, v]) => root.style.setProperty(k, v));
+  }
+  const nameKey = () => 'vial-layers:names:' + (state.vil && state.vil.uid != null ? state.vil.uid : state.fileName);
+
+  // ---------- your own names for keys (notes) ----------
+  // Defaults come from notes.json beside the page (read over http), or the copy embedded by
+  // tools/embed.py (used when the page is opened as a file). Edits made in the page are kept in
+  // this browser, per layout, on top of the defaults; an empty string removes a default.
+  const layoutId = () => (state.vil && state.vil.uid != null ? String(state.vil.uid) : state.fileName);
+  const notesKey = () => 'vial-layers:notes:' + layoutId();
+  let defaultNotes = { uid: null, notes: {} };
+  try { const o = JSON.parse($('default-notes').textContent || 'null'); if (o && o.notes) defaultNotes = o; } catch (e) { /* no embedded notes */ }
+  const readEdits = () => { try { return JSON.parse(LS.get(notesKey()) || '{}') || {}; } catch (e) { return {}; } };
+  function mergedNotes() {
+    const applies = defaultNotes.uid == null || String(defaultNotes.uid) === layoutId();
+    const out = Object.assign({}, applies ? defaultNotes.notes : {});
+    Object.entries(readEdits()).forEach(([k, v]) => { if (v) out[k] = v; else delete out[k]; });
+    return out;
+  }
+  function setNote(code, label) {
+    const edits = readEdits();
+    edits[code] = String(label || '').trim();
+    LS.set(notesKey(), JSON.stringify(edits));
+    rebuild();
+  }
+  function exportNotes() {
+    const data = {
+      about: 'Your own names for what keys do, keyed by Vial keycode. Save over notes.json beside index.html, then run python3 tools/embed.py.',
+      uid: '__UID__', notes: mergedNotes()
+    };
+    const json = JSON.stringify(data, null, 2).replace('"__UID__"', state.uidText || (state.vil && state.vil.uid != null ? String(state.vil.uid) : 'null')) + '\n';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+    a.download = 'notes.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    return json;
+  }
+  function importNotes(o, fileName) {
+    if (!o || typeof o.notes !== 'object' || Array.isArray(o.notes)) { showError(fileName + ' has no "notes" to import.'); return; }
+    const edits = {};
+    Object.keys(mergedNotes()).forEach(k => { edits[k] = ''; });
+    Object.entries(o.notes).forEach(([k, v]) => { if (typeof v === 'string') edits[k] = v.trim(); });
+    LS.set(notesKey(), JSON.stringify(edits));
+    showError('');
+    rebuild();
+  }
+
+  function showError(msg) { const e = $('error'); e.textContent = msg || ''; e.hidden = !msg; }
+
+  // Loads a layout. remember: keep it in this browser as the last one loaded (a file you chose),
+  // so it opens again after a reload. builtIn: the example embedded in the page.
+  function loadText(text, fileName, remember, builtIn) {
+    let vil;
+    try { vil = JSON.parse(text); } catch (e) { showError('Could not read ' + fileName + ': it is not valid JSON.'); return false; }
+    try { VL.analyse(vil, { os: state.os }); } catch (e) { showError(e.message); return false; }
+    showError('');
+    state.vil = vil; state.fileName = fileName; state.pinned = null; state.hover = null; state.builtIn = !!builtIn;
+    // The uid is wider than a JS number can hold exactly; keep its digits for exporting notes.
+    state.uidText = (String(text).match(/"uid"\s*:\s*(\d+)/) || [])[1] || null;
+    try { state.names = JSON.parse(LS.get(nameKey()) || '{}') || {}; } catch (e) { state.names = {}; }
+    if (remember) LS.set('vial-layers:last', JSON.stringify({ name: fileName, text }));
+    if (state.view !== 'all' && !(state.view < vil.layout.length)) state.view = 'all';
+    rebuild();
+    return true;
+  }
+
+  function rebuild() {
+    state.model = VL.analyse(state.vil, { os: state.os, names: state.names, notes: mergedNotes() });
+    $('file-name').textContent = state.fileName + ' · ' + state.vil.layout.length + ' layers';
+    render();
+  }
+  const BUILT_IN_NAME = 'miryoku-11.vil (built-in example)';
+  function loadBuiltIn() {
+    const def = $('default-vil').textContent || '';
+    return def.trim() ? loadText(def, BUILT_IN_NAME, false, true) : false;
+  }
+  // Back to the built-in example: forgets which file was loaded last. Your key and layer names are
+  // kept, per layout, so they are back when you load your file again.
+  function resetToBuiltIn() {
+    LS.remove('vial-layers:last');
+    if (loadBuiltIn()) $('open-btn').focus();
+  }
+
+  function visibleLayers() {
+    const m = state.model;
+    return m.layers.filter(l => !l.empty || l.index === 0);
+  }
+
+  // ---------- layer nav ----------
+  function renderNav() {
+    const nav = $('layer-nav');
+    const m = state.model;
+    const hidden = m.layers.filter(l => l.empty && l.index !== 0);
+    const hiddenText = hidden.length ? 'Hidden (empty): ' + hidden.map(l => 'layer ' + l.index).join(', ') : '';
+    let html = '<button class="chip" data-view="all" aria-pressed="' + (state.view === 'all') + '" title="All layers at once (A or Esc)' + (hiddenText ? '. ' + hiddenText : '') + '"><span class="num" style="--lc:var(--text)">A</span>All</button>';
+    for (const l of visibleLayers()) {
+      const reach = VL.reachText(l, m);
+      // The chip shows the name; how to reach the layer is in its tooltip (and shown beside it in a wide window).
+      html += '<button class="chip" data-view="' + l.index + '" style="--lc:' + colour(l.index) + '" aria-pressed="' + (state.view === l.index) + '" title="' + esc(l.name) + (reach ? ': ' + esc(reach) : '') + '. Press ' + l.index + ' to show this layer. Double-click to rename.">' +
+        '<span class="num">' + l.index + '</span><span class="lname">' + esc(l.name) + '</span>' + (reach ? '<span class="reach">' + esc(reach) + '</span>' : '') + '</button>';
+    }
+    if (hiddenText) html += '<span class="hidden-note">' + hiddenText + '</span>';
+    nav.innerHTML = html;
+  }
+
+  // ---------- board ----------
+  // How the board fits the window: VL.planSize picks the key unit u from the width of the board's
+  // container and the height left under the toolbar (side by side, or stacked on a phone). The
+  // vertical unit is u times `tall`, which starts at 1 (square keys) and grows only if a key's
+  // words need it and the window has the height (renderBoard).
+  const COMPACT_BELOW = 64, BOTTOM_ROOM = 10;
+  function boardPlan() {
+    const g = state.model.geo;
+    const wrap = $('board-wrap');
+    const availW = Math.max(200, wrap.clientWidth);
+    const availH = window.innerHeight - (wrap.getBoundingClientRect().top + window.scrollY) - BOTTOM_ROOM;
+    const p = VL.planSize(g, availW, availH);
+    if (!p.stacked) return Object.assign(p, { width: g.width, x: k => k.x, y: (k, v) => k.y * v, height: v => g.height * v, labels: [] });
+    const L = VL.LABEL_H, second = v => L + g.height * v + VL.HALF_GAP + L;
+    return Object.assign(p, {
+      width: p.halfW,
+      x: k => (k.side === 'right' ? k.x - p.rMin : k.x),
+      y: (k, v) => (k.side === 'right' ? second(v) : L) + k.y * v,
+      height: v => second(v) + g.height * v,
+      labels: [{ text: 'Left hand', top: () => 0 }, { text: 'Right hand', top: v => second(v) - L }]
+    });
+  }
+
+  // ---------- fitting every legend onto its key, in full ----------
+  // Every layer's legend is shown in words on every key, in its fixed place. Measured after
+  // rendering, a key whose words do not fit is fitted in this order, keeping the words whole
+  // for as long as possible:
+  //   1. a row too wide: narrower letters, then smaller type, widest legend first, never below
+  //      MIN_PX (layers) or MIN_BASE_PX (the base legend);
+  //   2. still too wide: the row takes two lines, the right legend under the left, and a legend
+  //      of several words may break between them;
+  //   3. more lines than a square key holds: every key grows a little taller, as far as the
+  //      window's height allows (up to 1.35 times its width);
+  //   4. only then, a legend is shortened (Prev tab to Tab ←), and as a last resort cut with an
+  //      ellipsis. Never a dot. The full wording is always in the tooltip and the detail panel.
+  const MIN_PX = 9, MIN_BASE_PX = 11;
+  const PHRASES = {
+    'Prev tab': 'Tab ←', 'Next tab': 'Tab →', 'Prev win': 'Win ←', 'Next win': 'Win →', 'Caps Lock': 'Caps',
+    'Pg Up': 'PgUp', 'Pg Dn': 'PgDn', 'To Base': 'Base', 'Layer lock': 'Lyr lock', 'RGB on/off': 'RGB',
+    'Fast fwd': 'FFwd', 'M click': 'M clk', 'L click': 'L clk', 'R click': 'R clk', 'Space': 'Spc', 'Enter': 'Ent',
+    'Escape': 'Esc', 'one-shot': '1-shot', 'tap+hold': 't+h', 'Insert': 'Ins', 'Delete': 'Del', 'Print Screen': 'PrtSc', 'Scroll Lock': 'ScrLk', 'Num Lock': 'NumLk'
+  };
+  const SHORT_WORDS = {
+    Bright: 'Brt', Forward: 'Fwd', Rewind: 'Rew', Previous: 'Prev', Screenshot: 'Shot', Spotlight: 'Spotlt',
+    Launchpad: 'Lpad', Settings: 'Prefs', Minimise: 'Min', Mission: 'Msn', Scroll: 'Scr', Insert: 'Ins',
+    Delete: 'Del', windows: 'wins', Toggle: 'Tog', Default: 'Def', Refresh: 'Rfsh', Backlight: 'Bklt',
+    Screen: 'Scrn', screen: 'scrn', Select: 'Sel', favourites: 'favs', speed: 'spd', Mouse: 'Ms', Space: 'Spc',
+    clipboard: 'clip', Clipboard: 'Clip', desktop: 'desk', Desktop: 'Desk', Keyboard: 'Kbd', keyboard: 'kbd', Terminal: 'Term'
+  };
+  const MODS = { mac: { Shift: '⇧', Ctrl: '⌃', Opt: '⌥', Cmd: '⌘' }, pc: { Shift: 'Sft', Ctrl: 'Ctl' } };
+  // Shorter forms of a legend, longest first. `layerName` marks a hold that opens a layer.
+  function shorterForms(full, layerName) {
+    const out = [];
+    const add = s => { s = s.trim(); if (s && s.length < full.length && !out.includes(s)) out.push(s); };
+    const mods = MODS[state.os] || {};
+    if (layerName) { add(full.slice(0, 3)); add(full.slice(0, 1)); return out; }
+    let s = PHRASES[full] || full.split(' ').map(w => mods[w] || SHORT_WORDS[w] || PHRASES[w] || w).join(' ');
+    add(s);
+    add(s.replace(/ ?([+\-←→↑↓]) ?/g, '$1').replace(/([⇧⌃⌥⌘]) /g, '$1'));
+    // A name of several words (your own, say "Alfred clipboard"): its last word says the most.
+    const words = s.split(' ');
+    if (words.length > 1 && words.every(w => /^[A-Za-z]{3,}$/.test(w))) {
+      const w = words[words.length - 1]; add(w[0].toUpperCase() + w.slice(1));
+    }
+    return out;
+  }
+  const textNode = el => [...el.childNodes].find(n => n.nodeType === 3);
+  const wide = el => el.scrollWidth > el.clientWidth + 0.5;
+  const high = el => el.scrollHeight > el.clientHeight + 0.5;
+  const minPx = c => (c.classList.contains('base') ? MIN_BASE_PX : MIN_PX);
+  const cellsOf = row => [...row.querySelectorAll('.cell')];
+  const resetCell = c => { c.style.fontSize = ''; c.style.fontStretch = ''; };
+
+  // Step 1. Fits a row on one line: narrower letters, then both legends smaller together, in
+  // proportion, so neither ends up tiny beside a large one. True if it fits.
+  function shrinkRow(row) {
+    const cells = cellsOf(row);
+    if (!cells.length || !wide(row)) return true;
+    cells.forEach(c => { c.style.fontStretch = 'condensed'; });
+    const px = cells.map(c => parseFloat(getComputedStyle(c).fontSize));
+    for (let f = 0.95; wide(row); f -= 0.05) {
+      let moved = false;
+      cells.forEach((c, i) => {
+        const v = Math.max(minPx(c), Math.round(px[i] * f * 10) / 10);
+        if (v !== parseFloat(c.style.fontSize || px[i])) moved = true;
+        c.style.fontSize = v + 'px';
+      });
+      if (!moved && f < 0.95) break;
+    }
+    return !wide(row);
+  }
+  // A single legend wider than its key: narrower letters, then smaller type down to the minimum.
+  function shrinkCell(c) {
+    if (!wide(c)) return true;
+    c.style.fontStretch = 'condensed';
+    let px = parseFloat(getComputedStyle(c).fontSize);
+    while (wide(c) && px > minPx(c)) { px = Math.max(minPx(c), px - 0.5); c.style.fontSize = px + 'px'; }
+    return !wide(c);
+  }
+  // Step 2. The row takes two lines, at the smallest type, so it costs as little height as it can.
+  function wrapRow(row) {
+    row.classList.add('wrap');
+    cellsOf(row).forEach(c => { c.style.fontStretch = 'condensed'; c.style.fontSize = minPx(c) + 'px'; });
+  }
+  function fitRow(row) {
+    row.classList.remove('wrap');
+    cellsOf(row).forEach(c => { resetCell(c); if (!c.dataset.px) c.dataset.px = parseFloat(getComputedStyle(c).fontSize); });
+    if (!shrinkRow(row)) { wrapRow(row); cellsOf(row).forEach(shrinkCell); }
+  }
+  // After the height is settled, legends on two-line rows take back as much of their usual size
+  // as the key has room for, half a pixel at a time.
+  function growKey(face) {
+    // A row squeezed onto one line well below its usual size reads better on two lines, if the
+    // key has the height for it.
+    face.querySelectorAll('.row:not(.wrap)').forEach(row => {
+      const cells = cellsOf(row);
+      if (!cells.some(c => parseFloat(getComputedStyle(c).fontSize) < 0.75 * +c.dataset.px)) return;
+      const saved = cells.map(c => [c.style.fontSize, c.style.fontStretch]);
+      wrapRow(row);
+      if (!keyFits(face)) { row.classList.remove('wrap'); cells.forEach((c, i) => { [c.style.fontSize, c.style.fontStretch] = saved[i]; }); }
+    });
+    const cells = [...face.querySelectorAll('.row.wrap .cell')];
+    if (!cells.length) return;
+    const top = Math.max(...cells.map(c => +c.dataset.px || 0));
+    for (let s = MIN_PX + 0.5; s <= top; s += 0.5) {
+      const before = cells.map(c => c.style.fontSize);
+      cells.forEach(c => { c.style.fontSize = Math.max(minPx(c), Math.min(+c.dataset.px, s)) + 'px'; });
+      if (!keyFits(face)) { cells.forEach((c, i) => { c.style.fontSize = before[i]; }); return; }
+    }
+  }
+  // Whether every word on a key is on show: no row or legend too wide, and the rows not too tall.
+  const keyFits = face => !high(face) && ![...face.querySelectorAll('.row')].some(r => (r.classList.contains('wrap') ? cellsOf(r).some(wide) : wide(r)));
+
+  // Step 4. Shortens the legends on one key until its words fit: legends on a two-line row first
+  // (each saves a line), longest first. Each shortened legend keeps its full wording in data-full.
+  function shortenKey(face) {
+    const cells = [...face.querySelectorAll('.cell')].filter(c => !c.classList.contains('base') && textNode(c));
+    const forms = new Map(cells.map(c => [c, shorterForms(textNode(c).nodeValue, c.dataset.layerName === '1')]));
+    for (let guard = 0; !keyFits(face) && guard < 40; guard++) {
+      const score = c => (c.closest('.row').classList.contains('wrap') ? 1000 : 0) + textNode(c).nodeValue.length;
+      const next = cells.filter(c => forms.get(c).length).sort((a, b) => score(b) - score(a))[0];
+      if (!next) break;
+      const t = textNode(next);
+      if (!next.dataset.full) next.dataset.full = t.nodeValue;
+      t.nodeValue = forms.get(next).shift();
+      next.classList.add('short');
+      fitRow(next.closest('.row'));
+    }
+    if (keyFits(face)) return;
+    // Last resort: every row on one line, cut with an ellipsis where it must be.
+    face.querySelectorAll('.row').forEach(r => {
+      r.classList.remove('wrap'); r.classList.add('squeeze');
+      cellsOf(r).forEach(c => { if (wide(c)) { c.classList.add('short', 'cut'); if (!c.dataset.full) c.dataset.full = textNode(c) ? textNode(c).nodeValue : ''; } });
+    });
+  }
+
+  let compact = false;
+
+  // Which place on the key each layer's legend takes, the same on every key. The two places that
+  // share a row with a short legend (beside the base letter, and beside the hold) go to the layers
+  // with the most text; the rest fill the rows between, in layer order.
+  function slotOrder() {
+    const m = state.model;
+    const others = visibleLayers().filter(l => l.index !== 0);
+    if (others.length < 3) return others;
+    const demand = l => m.cells[l.index].reduce((n, d) => n + (d.kind === 'key' || d.kind === 'layer' ? Math.min(8, [...String(d.tap)].length) : 0), 0);
+    const byDemand = others.slice().sort((a, b) => demand(b) - demand(a) || a.index - b.index);
+    const first = byDemand[0];
+    // With an even number of other layers the last one shares its row with the hold; with an odd
+    // number the hold has a row to itself, so only the place beside the base is special.
+    const last = others.length % 2 === 0 ? byDemand[1] : null;
+    const middle = others.filter(l => l !== first && l !== last);
+    return [first].concat(middle, last ? [last] : []);
+  }
+
+  function keyHTML(k, ki) {
+    const m = state.model;
+    const vis = visibleLayers();
+    const base = m.cells[0][ki];
+    const allEmpty = m.cells.every(row => { const d = row[ki]; return d.kind === 'none' || d.kind === 'trans' || d.kind === 'absent'; });
+    let cls = 'key' + (allEmpty ? ' ghost' : '');
+    let style = '';
+    let inner = '';
+    // One legend: text in a colour, with its full wording as the tooltip.
+    const cell = (c, text, colr, title, extra, layerName) => '<span class="cell ' + c + '"' + (colr ? ' style="color:' + colr + '"' : '') +
+      (title ? ' title="' + esc(title) + '"' : '') + (layerName ? ' data-layer-name="1"' : '') + '>' + esc(text) + (extra || '') + '</span>';
+    if (allEmpty) {
+      inner = '';
+    } else if (state.view === 'all') {
+      // Legends in reading order, two to a row: base, each other layer in turn, then the hold
+      // always last on the right. A place with nothing in it stays empty, so each layer keeps its spot.
+      const holdCol = base.holdLayer !== null && base.holdLayer !== undefined ? colour(base.holdLayer) : null;
+      const baseText = base.kind === 'none' || base.kind === 'absent' ? '' : base.tap;
+      const baseCol = base.kind === 'layer' ? colour(base.layerRef) : colour(0);
+      // Extras (double-tap, tap then hold) live in the single-layer view and the detail panel; here a "+" marks them.
+      const more = base.extras.length ? '<span class="more" aria-hidden="true">+</span>' : '';
+      const baseTitle = (base.full || '') + (base.extras.length ? '. ' + base.extras.map(e => e.label + ': ' + e.text).join(' · ') : '');
+      const items = [baseText ? { c: 'base', text: baseText, col: baseCol, title: baseTitle, extra: more } : null];
+      slotOrder().forEach(l => {
+        const d = m.cells[l.index][ki];
+        const txt = d.kind === 'key' || d.kind === 'layer' ? d.tap : '';
+        items.push(txt ? { c: '', text: txt, col: colour(l.index), title: l.name + ': ' + (d.full || '') } : null);
+      });
+      if (base.hold) {
+        if (items.length % 2 === 0) items.push(null);
+        items.push({ c: 'hold', text: base.hold, col: holdCol, title: 'Hold: ' + base.hold, layer: holdCol != null });
+      }
+      inner += '<div class="face">';
+      for (let i = 0; i < items.length; i += 2) {
+        const [a, b] = [items[i], items[i + 1]];
+        inner += '<div class="row">' + (a ? cell(a.c, a.text, a.col, a.title, a.extra, a.layer) : '') + (b ? cell('r ' + b.c, b.text, b.col, b.title, b.extra, b.layer) : '') + '</div>';
+      }
+      inner += '</div>';
+    } else {
+      const li = state.view;
+      const d = m.cells[li][ki];
+      style += '--lc:' + colour(li) + ';';
+      let main = '', subs = [];
+      if (d.kind === 'trans') {
+        cls += ' trans';
+        // show what falls through, from the base layer
+        const b = m.cells[0][ki];
+        main = b.kind === 'key' || b.kind === 'layer' ? b.tap : '';
+      } else if (d.kind === 'key' || d.kind === 'layer') {
+        main = d.tap;
+        if (d.sub) subs.push({ lab: '', text: d.sub });
+        if (d.hold) subs.push({ lab: 'hold', text: d.hold, col: d.holdLayer != null ? colour(d.holdLayer) : null, layer: d.holdLayer != null });
+        d.extras.forEach(e => subs.push({ lab: e.label, text: e.text }));
+      }
+      const layer = m.layers[li];
+      const r = layer.reach.find(x => x.key === ki && (x.from === 0 || x.from === li));
+      if (r && li !== 0) cls += ' reach how-' + r.how;
+      inner += '<div class="face"><div class="row">' + (main ? cell('base', main, null, d.full || main) : '') + '</div>';
+      subs.forEach(s => {
+        inner += '<div class="row sub">' + (s.lab ? cell('lab', s.lab, null, s.lab) : '') + cell('val', s.text, s.col, (s.lab ? s.lab + ': ' : '') + s.text, '', s.layer) + '</div>';
+      });
+      inner += '</div>';
+    }
+    if (state.pinned === ki) cls += ' pinned';
+    if (k.rot) style += 'transform:rotate(' + k.rot + 'deg);';
+    return '<div class="' + cls + '" data-ki="' + ki + '" tabindex="0" role="button" aria-pressed="' + (state.pinned === ki) + '" style="' + style + '">' + inner + '</div>';
+  }
+
+  // Draws every key at unit u (px) across and u * tall down, then fits each key's words (steps 1 and 2).
+  function drawBoard(plan, tall) {
+    const m = state.model;
+    const board = $('board');
+    const u = plan.u, v = u * tall;
+    compact = u < COMPACT_BELOW;
+    const root = document.documentElement.style;
+    root.setProperty('--u', u + 'px');
+    const lift = compact ? 2 : 3;
+    root.setProperty('--lift', lift + 'px');
+    const pad = compact ? Math.max(1.25, 0.025 * u) : 0.04 * u;
+    board.className = 'board' + (state.view === 'all' ? '' : ' single') + (plan.stacked ? ' stacked' : '') + (compact ? ' compact' : '');
+    board.style.width = Math.floor(plan.width * u) + 'px';
+    let html = '';
+    plan.labels.forEach((l, i) => { html += '<div class="half-label" data-half="' + i + '" style="top:' + l.top(v) + 'px">' + l.text + '</div>'; });
+    m.geo.keys.forEach((k, ki) => {
+      const pos = 'left:' + (plan.x(k) * u + pad) + 'px;width:' + (k.w * u - 2 * pad) + 'px;top:' + (plan.y(k, v) + pad) + 'px;height:' + (k.h * v - 2 * pad) + 'px;';
+      html += keyHTML(k, ki).replace('style="', 'style="' + pos);
+    });
+    board.innerHTML = html;
+    // Room below for the keycaps' skirts.
+    board.style.height = Math.ceil(plan.height(v) + lift) + 'px';
+    if (state.view === 'all') board.querySelectorAll('.key .row').forEach(fitRow);
+    else board.querySelectorAll('.key .row').forEach(fitSingleRow);
+    return pad;
+  }
+  // The single-layer view has a line to each legend: smaller type, then shorter forms, then an ellipsis.
+  function fitSingleRow(row) {
+    if (shrinkRow(row)) return;
+    const c = cellsOf(row).find(x => !x.classList.contains('lab') && textNode(x));
+    if (c) {
+      const t = textNode(c);
+      for (const s of shorterForms(t.nodeValue, c.dataset.layerName === '1')) { if (!wide(row)) break; t.nodeValue = s; }
+    }
+    if (wide(row)) row.classList.add('squeeze');
+  }
+
+  function renderBoard() {
+    const plan = boardPlan();
+    let tall = 1;
+    let pad = drawBoard(plan, tall);
+    // Step 3. Keys too short for their words: all of them grow a little taller, if the window allows.
+    if (state.view === 'all' && plan.maxTall > 1) {
+      let need = 1;
+      $('board').querySelectorAll('.key .face').forEach(face => {
+        if (!high(face)) return;
+        const key = face.parentElement;
+        const around = key.offsetHeight - face.clientHeight; // border and padding
+        need = Math.max(need, (face.scrollHeight + around + 2 * pad) / plan.u);
+      });
+      if (need > 1) { tall = Math.min(plan.maxTall, Math.ceil(need * 100) / 100); pad = drawBoard(plan, tall); }
+    }
+    // Step 4. Anything still not fitting is shortened, key by key; a key with room to spare gives
+    // its two-line legends back some size.
+    if (state.view === 'all') $('board').querySelectorAll('.key .face').forEach(face => { if (!keyFits(face)) shortenKey(face); else growKey(face); });
+  }
+
+  // ---------- detail ----------
+  function renderDetail() {
+    const m = state.model;
+    const el = $('detail');
+    const ki = state.pinned != null ? state.pinned : state.hover;
+    if (ki == null) {
+      el.innerHTML = '<h2>Point at a key</h2><p class="hint">Hover or click any key to see everything it does on every layer. Press a number to see one layer large, Esc for all. <b>Load .vil</b> (or drop the file on the page) shows your own layout, and it stays until you load another.</p>';
+      return;
+    }
+    const k = m.geo.keys[ki];
+    const where = k.side === 'matrix' ? 'Row ' + k.r + ', column ' + k.c : (k.side === 'left' ? 'Left' : 'Right') + ' hand, ' + k.row + ', ' + k.finger;
+    let rows = '';
+    m.layers.forEach(l => {
+      if (l.empty && l.index !== 0) return;
+      const d = m.cells[l.index][ki];
+      let text;
+      if (d.kind === 'trans') { const b = m.cells[0][ki]; text = '<span class="dim">Same as Base' + (b.kind === 'key' ? ' (' + esc(b.tap) + ')' : '') + '</span>'; }
+      else if (d.kind === 'none' || d.kind === 'absent') text = '<span class="dim">Nothing</span>';
+      else {
+        text = esc(d.full) + ' <code class="dim">' + esc(typeof d.raw === 'string' ? d.raw : '') + '</code>';
+        // Pinned: each action on the key can be given your own name.
+        if (state.pinned != null && d.parts && d.parts.length) {
+          const notes = m.ctx.notes || {};
+          text += '<div class="parts">' + d.parts.map(p => {
+            const has = notes[p.code];
+            const what = p.label ? p.label.toLowerCase() : 'this';
+            return '<button class="btn small name-btn" data-code="' + esc(p.code) + '" data-what="' + esc(p.label || 'Key') + '" title="Your own name for ' + esc(p.code) + ', used wherever it appears">' +
+              (has ? 'Rename ' + esc(what) : 'Name ' + esc(what)) + '</button>';
+          }).join('') + '</div>';
+        }
+      }
+      rows += '<tr><td style="--lc:' + colour(l.index) + '"><span class="swatch"></span>' + l.index + ' ' + esc(l.name) + '</td><td>' + text + '</td></tr>';
+    });
+    el.innerHTML = '<h2>' + esc(where) + (state.pinned != null ? ' <span class="dim">(pinned, click again to release)</span>' : ' <span class="dim">(click to pin, then name what it does)</span>') + '</h2><table>' + rows + '</table>';
+  }
+
+  // Inline editor for a note, opened from a Name button in the detail panel.
+  function openNoteEditor(btn) {
+    const code = btn.dataset.code;
+    const current = (state.model.ctx.notes || {})[code] || '';
+    const plain = VL.describe(code, Object.assign({}, state.model.ctx, { notes: null }));
+    const box = document.createElement('div');
+    box.className = 'note-edit';
+    box.innerHTML = '<label>' + esc(btn.dataset.what) + ' (' + esc(plain.tap || code) + ', <code>' + esc(code) + '</code>) does: ' +
+      '<input type="text" maxlength="40" placeholder="e.g. Alfred clipboard"></label> ' +
+      '<button class="btn small" data-act="save">Save</button> ' +
+      (current ? '<button class="btn small" data-act="clear">Remove name</button> ' : '') +
+      '<button class="btn small" data-act="cancel">Cancel</button>';
+    btn.closest('.parts').replaceWith(box);
+    const input = box.querySelector('input');
+    input.value = current; input.focus(); input.select();
+    const done = act => { if (act === 'save') setNote(code, input.value); else if (act === 'clear') setNote(code, ''); else renderDetail(); };
+    input.addEventListener('keydown', ev => { ev.stopPropagation(); if (ev.key === 'Enter') done('save'); if (ev.key === 'Escape') done('cancel'); });
+    box.addEventListener('click', ev => { const b = ev.target.closest('button'); if (b) done(b.dataset.act); });
+  }
+
+  // ---------- reference lists ----------
+  function renderRef() {
+    const m = state.model; const vil = state.vil; const ctx = m.ctx;
+    const used = new Set();
+    vil.layout.forEach(L => L.forEach(row => row.forEach(c => { const p = VL.parse(c); if (p && p.fn === 'TD') used.add(+p.args[0]); })));
+    const notes = ctx.notes || {};
+    const noteList = Object.entries(notes).sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }));
+    let html = '<section><h2>Your names for keys</h2>' +
+      (noteList.length
+        ? '<ul>' + noteList.map(([code, label]) => '<li><b>' + esc(label) + '</b> ' + esc(VL.describe(code, Object.assign({}, ctx, { notes: null })).full) + ' <code>' + esc(code) + '</code></li>').join('') + '</ul>'
+        : '<p class="hint">None yet. Click a key to pin it, then use Name in the panel above.</p>') +
+      '<p class="note-actions"><button class="btn small" id="notes-export" title="Download as notes.json, to save beside index.html">Export notes.json</button> ' +
+      '<button class="btn small" id="notes-import" title="Load names from a notes.json file (or drop one on the page)">Import</button></p></section>';
+    if (used.size) {
+      html += '<section><h2>Tap dances in use</h2><ul>' + [...used].sort((a, b) => a - b).map(n => {
+        const d = VL.describe('TD(' + n + ')', ctx);
+        return '<li><b>' + esc(d.tap) + '</b> ' + esc(d.full.replace(/^Tap dance \d+\. /, '')) + ' <code>TD(' + n + ')</code></li>';
+      }).join('') + '</ul></section>';
+    }
+    const macros = (vil.macro || []).map((mc, i) => ({ i, mc })).filter(x => x.mc && x.mc.length);
+    if (macros.length) {
+      html += '<section><h2>Macros</h2><ul>' + macros.map(x => '<li><b>M' + x.i + '</b> ' + (notes['M' + x.i] ? '<b>' + esc(notes['M' + x.i]) + '</b>: ' : '') + esc(VL.macroText(x.i, ctx).long) + '</li>').join('') + '</ul></section>';
+    }
+    const combos = (vil.combo || []).map((c, i) => ({ c, i })).filter(x => x.c && x.c[x.c.length - 1] !== 'KC_NO');
+    if (combos.length) {
+      html += '<section><h2>Combos</h2><ul>' + combos.map(x => {
+        const keys = x.c.slice(0, -1).filter(k => k !== 'KC_NO').map(k => VL.describe(k, ctx).tap).join(' + ');
+        return '<li><b>' + esc(keys) + '</b> → ' + esc(VL.describe(x.c[x.c.length - 1], ctx).full) + '</li>';
+      }).join('') + '</ul></section>';
+    }
+    const kos = (vil.key_override || []).filter(o => o && o.trigger && o.trigger !== 'KC_NO');
+    if (kos.length) {
+      html += '<section><h2>Key overrides</h2><ul>' + kos.map(o => '<li>' + esc(VL.describe(o.trigger, ctx).tap) + ' (with mods ' + o.trigger_mods + ') → ' + esc(VL.describe(o.replacement, ctx).full) + '</li>').join('') + '</ul></section>';
+    }
+    $('ref').innerHTML = html;
+  }
+
+  function render() {
+    if (!state.model) return;
+    applyTheme();
+    $('reset-btn').hidden = !!state.builtIn;
+    $('reset-btn').title = 'Back to the built-in example. Showing your ' + state.fileName + '; your key names stay saved for it';
+    $('os-btn').textContent = state.os === 'mac' ? 'Mac' : 'PC';
+    $('os-btn').setAttribute('aria-label', (state.os === 'mac' ? 'Mac' : 'PC') + ' labels. Switch to ' + (state.os === 'mac' ? 'PC' : 'Mac') + ' labels');
+    $('theme-btn').setAttribute('aria-label', 'Switch to the ' + (state.theme === 'dark' ? 'light' : 'dark') + ' theme');
+    $('theme-btn').title = 'Switch to the ' + (state.theme === 'dark' ? 'light' : 'dark') + ' theme';
+    $('open-btn').title = 'Load your .vil (O), or drop it anywhere on the page. Showing: ' + $('file-name').textContent;
+    renderNav(); renderBoard(); renderDetail(); renderRef();
+  }
+
+  function setView(v) {
+    if (!state.model) return;
+    // Empty layers are hidden from the nav, so a number key (or ?layer=) for one does nothing.
+    if (v !== 'all') { v = +v; if (!(v >= 0 && v < state.model.layers.length) || (v !== 0 && state.model.layers[v].empty)) return; }
+    state.view = v; render();
+  }
+  function stepView(dir) {
+    const vis = visibleLayers().map(l => l.index);
+    const order = ['all'].concat(vis);
+    const i = order.indexOf(state.view);
+    setView(order[(i + dir + order.length) % order.length]);
+  }
+
+  // ---------- events ----------
+  $('layer-nav').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) setView(b.dataset.view === 'all' ? 'all' : +b.dataset.view); });
+  $('layer-nav').addEventListener('dblclick', e => {
+    const b = e.target.closest('.chip'); if (!b || b.dataset.view === 'all') return;
+    const i = +b.dataset.view; const span = b.querySelector('.lname');
+    const input = document.createElement('input'); input.className = 'rename'; input.value = state.model.layers[i].name;
+    span.replaceWith(input); input.focus(); input.select();
+    const done = save => {
+      if (save) { const v = input.value.trim(); if (v && v !== state.model.layers[i].guessed) state.names[i] = v; else delete state.names[i]; LS.set(nameKey(), JSON.stringify(state.names)); }
+      rebuild();
+    };
+    input.addEventListener('keydown', ev => { ev.stopPropagation(); if (ev.key === 'Enter') done(true); if (ev.key === 'Escape') done(false); });
+    input.addEventListener('blur', () => done(true), { once: true });
+  });
+  $('board').addEventListener('mouseover', e => { const k = e.target.closest('.key'); if (!k) return; const ki = +k.dataset.ki; if (state.hover !== ki) { state.hover = ki; renderDetail(); } });
+  $('board').addEventListener('mouseleave', () => { state.hover = null; renderDetail(); });
+  // Pinning presses a key down and keeps it there; the same key again releases it. Only the two
+  // keys' classes change (no redraw), so the press animates and focus stays where it is.
+  function setPinned(ki) {
+    state.pinned = ki;
+    $('board').querySelectorAll('.key').forEach(el => {
+      const on = ki != null && +el.dataset.ki === ki;
+      el.classList.toggle('pinned', on);
+      el.setAttribute('aria-pressed', String(on));
+    });
+    renderDetail();
+  }
+  const togglePin = ki => setPinned(state.pinned === ki ? null : ki);
+  $('board').addEventListener('click', e => { const k = e.target.closest('.key'); if (k) togglePin(+k.dataset.ki); });
+  // Enter or Space on a focused key pins it, like a click.
+  $('board').addEventListener('keydown', e => {
+    const k = e.target.closest && e.target.closest('.key');
+    if (!k || (e.key !== 'Enter' && e.key !== ' ')) return;
+    e.preventDefault(); e.stopPropagation();
+    togglePin(+k.dataset.ki);
+  });
+  $('board').addEventListener('focusin', e => { const k = e.target.closest('.key'); if (k) { state.hover = +k.dataset.ki; renderDetail(); } });
+
+  $('detail').addEventListener('click', e => { const b = e.target.closest('.name-btn'); if (b) openNoteEditor(b); });
+  $('ref').addEventListener('click', e => {
+    if (e.target.closest('#notes-export')) exportNotes();
+    else if (e.target.closest('#notes-import')) $('file-input').click();
+  });
+  $('open-btn').addEventListener('click', () => $('file-input').click());
+  $('reset-btn').addEventListener('click', resetToBuiltIn);
+  $('file-input').addEventListener('change', e => { const f = e.target.files[0]; if (f) readFile(f); e.target.value = ''; });
+  // One reader for both kinds of file: a .vil layout, or a notes.json of your own key names.
+  function readFile(f) {
+    const r = new FileReader();
+    r.onload = () => {
+      const text = String(r.result);
+      let o = null; try { o = JSON.parse(text); } catch (e) { /* loadText reports it */ }
+      if (o && !o.layout && o.notes) importNotes(o, f.name); else loadText(text, f.name, true);
+    };
+    r.onerror = () => showError('Could not read ' + f.name);
+    r.readAsText(f);
+  }
+  let dragDepth = 0;
+  window.addEventListener('dragenter', e => { e.preventDefault(); dragDepth++; document.body.classList.add('dragging'); });
+  window.addEventListener('dragleave', e => { e.preventDefault(); dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) document.body.classList.remove('dragging'); });
+  window.addEventListener('dragover', e => e.preventDefault());
+  window.addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; document.body.classList.remove('dragging'); const f = e.dataTransfer.files[0]; if (f) readFile(f); });
+
+  $('os-btn').addEventListener('click', () => { state.os = state.os === 'mac' ? 'pc' : 'mac'; savePrefs(); if (state.vil) rebuild(); });
+  $('theme-btn').addEventListener('click', () => { state.theme = state.theme === 'dark' ? 'light' : 'dark'; savePrefs(); render(); });
+  const help = $('help');
+  // Focus moves into the dialog on open, stays there (Close is its only control), and goes back to ? on close.
+  let helpReturn = null;
+  const toggleHelp = open => {
+    const was = help.classList.contains('open');
+    help.classList.toggle('open', open);
+    if (open && !was) { helpReturn = document.activeElement; $('help-close').focus(); }
+    if (!open && was) { const r = helpReturn && helpReturn.isConnected ? helpReturn : $('help-btn'); r.focus(); helpReturn = null; }
+  };
+  $('help-btn').addEventListener('click', () => toggleHelp(true));
+  $('help-close').addEventListener('click', () => toggleHelp(false));
+  help.addEventListener('click', e => { if (e.target === help) toggleHelp(false); });
+
+
+  window.addEventListener('keydown', e => {
+    if (e.target.closest && e.target.closest('input, textarea, select')) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (help.classList.contains('open')) {
+      if (e.key === 'Escape' || e.key === '?') { toggleHelp(false); e.preventDefault(); }
+      else if (e.key === 'Tab') { $('help-close').focus(); e.preventDefault(); }
+      return;
+    }
+    if (/^[0-9]$/.test(e.key)) { setView(+e.key); e.preventDefault(); }
+    else if (e.key === 'Escape' || e.key === 'a' || e.key === 'A') { if (state.pinned != null && e.key === 'Escape' && state.view === 'all') setPinned(null); else setView('all'); }
+    else if (e.key === 'ArrowRight') { stepView(1); e.preventDefault(); }
+    else if (e.key === 'ArrowLeft') { stepView(-1); e.preventDefault(); }
+    else if (e.key === '?') toggleHelp(true);
+    else if (e.key === 'o' || e.key === 'O') $('file-input').click();
+    else if (e.key === 'm' || e.key === 'M') $('os-btn').click();
+    else if (e.key === 'v' || e.key === 'V') window.open('https://vial.rocks/', '_blank', 'noopener');
+  });
+  // Re-fit whenever the window or the board's container changes width or height (window resize,
+  // side pane dragged wider or narrower, the toolbar wrapping onto a second line).
+  let rt, lastSize = '';
+  const refit = () => { clearTimeout(rt); rt = setTimeout(() => { const s = $('board-wrap').clientWidth + 'x' + window.innerHeight + '@' + $('board-wrap').offsetTop; if (state.model && s !== lastSize) { lastSize = s; renderBoard(); } }, 60); };
+  window.addEventListener('resize', refit);
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(refit).observe($('board-wrap'));
+
+  // ---------- start ----------
+  $('credit-site').href = SITE_URL;
+  applyTheme();
+  const params = new URLSearchParams(location.search);
+  let loaded = false;
+  // The last layout you loaded (kept in this browser), else the built-in example.
+  const last = LS.get('vial-layers:last');
+  if (last) { try { const o = JSON.parse(last); loaded = loadText(o.text, o.name, false); } catch (e) { loaded = false; } }
+  if (!loaded) loaded = loadBuiltIn();
+  if (!loaded) { $('detail').innerHTML = '<h2>No layout yet</h2><p class="hint">Click <b>Load .vil</b> or drop your file here. In Vial: File, Save current layout.</p>'; }
+  if (params.has('layer')) setView(params.get('layer') === 'all' ? 'all' : +params.get('layer'));
+  // Served over http (not opened as a file): read notes.json fresh, so a saved export shows without re-embedding.
+  if (/^https?:$/.test(location.protocol)) {
+    fetch('notes.json', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null))
+      .then(o => { if (o && o.notes && typeof o.notes === 'object') { defaultNotes = o; if (state.vil) rebuild(); } })
+      .catch(() => { /* keep the embedded copy */ });
+  }
+})();
+</script>
+</body>
+</html>

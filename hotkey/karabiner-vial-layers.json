@@ -1,0 +1,20 @@
+{
+  "title": "Vial layer map",
+  "rules": [
+    {
+      "description": "Hyper+K (Ctrl+Opt+Shift+Cmd+K) opens the Vial layer map",
+      "manipulators": [
+        {
+          "type": "basic",
+          "from": {
+            "key_code": "k",
+            "modifiers": { "mandatory": ["left_control", "left_option", "left_shift", "left_command"] }
+          },
+          "to": [
+            { "shell_command": "sh ~/coding/projects/vial-layers/hotkey/open-layer-map.sh" }
+          ]
+        }
+      ]
+    }
+  ]
+}

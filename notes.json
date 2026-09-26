@@ -1,0 +1,9 @@
+{
+  "about": "Your own names for what keys do, shown instead of the raw keystrokes. Keyed by the Vial keycode (M3 is macro 3, KC_F11 is F11). Edit them in the page (pin a key, then Name), then Export and save over this file. After changing this file, run: python3 tools/embed.py (so the page also has them when opened by double-click).",
+  "uid": 5010774632021243529,
+  "notes": {
+    "M3": "Alfred clipboard",
+    "M4": "Screenshot",
+    "KC_F11": "Show desktop"
+  }
+}
