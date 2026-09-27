@@ -1,10 +1,10 @@
-# Vial Layer Map
+# Vial Keyboard Layers
 
 See every layer of your Vial keyboard layout on one screen, in plain words instead of raw keycodes.
 
-![Vial Layer Map showing all five layers of a Corne layout at once, each layer in its own colour](docs/screenshot-all-layers.png)
+![Vial Keyboard Layers showing all five layers of a Corne layout at once, each layer in its own colour](docs/screenshot-all-layers.png)
 
-**Run it now:** open **[dileeparanawake.github.io/vial-layers](https://dileeparanawake.github.io/vial-layers/)**,
+**Run it now:** open **[dileeparanawake.github.io/vial-keyboard-layers](https://dileeparanawake.github.io/vial-keyboard-layers/)**,
 or download this repo and double-click `index.html`. No install, no server.
 
 - **Nothing collected.** No account, no tracking, no uploads. Your `.vil` never leaves your machine.
@@ -19,7 +19,7 @@ This page is the quick answer: one file, opened in a browser, showing every laye
 
 ## How to use it
 
-1. **Open the page.** Go to [dileeparanawake.github.io/vial-layers](https://dileeparanawake.github.io/vial-layers/), or download this repository and double-click `index.html`. No install, no server, no build step. It opens with a built-in example layout. (More ways, including its own app window and an offline hotkey, in [Three ways to open it](#three-ways-to-open-it).)
+1. **Open the page.** Go to [dileeparanawake.github.io/vial-keyboard-layers](https://dileeparanawake.github.io/vial-keyboard-layers/), or download this repository and double-click `index.html`. No install, no server, no build step. It opens with a built-in example layout. (More ways, including its own app window and an offline hotkey, in [Three ways to open it](#three-ways-to-open-it).)
 2. **Save your layout from Vial.** In Vial: File, Save current layout. That writes a `.vil` file.
 3. **Click Load .vil** (the accented button in the toolbar, or press `O`) and choose the file, **or drop it anywhere on the page**. Your layout shows straight away.
 
@@ -66,12 +66,12 @@ Names are kept in your browser. To keep them with the page:
 
 ## Three ways to open it
 
-**A. In a browser tab.** Open [dileeparanawake.github.io/vial-layers](https://dileeparanawake.github.io/vial-layers/). Nothing to install. Needs internet.
+**A. In a browser tab.** Open [dileeparanawake.github.io/vial-keyboard-layers](https://dileeparanawake.github.io/vial-keyboard-layers/). Nothing to install. Needs internet.
 
 **B. As its own app window, from the live page (no download).**
 
 1. Open the page in Chrome or Edge.
-2. **Chrome:** the install button at the right of the address bar, or menu, **Cast, save and share**, **Install Vial Layer Map**. **Edge:** menu, **Apps**, **Install this site as an app**.
+2. **Chrome:** the install button at the right of the address bar, or menu, **Cast, save and share**, **Install Vial Keyboard Layers**. **Edge:** menu, **Apps**, **Install this site as an app**.
 3. **Safari 17 or later, on a Mac:** File, **Add to Dock**.
 
 The menu item only shows on the live page, not on a copy opened from your disk. It then opens like any other app (on a Mac, from the Dock, Launchpad or Spotlight). A launcher such as Alfred, Raycast or macOS Shortcuts can give it a hotkey. It needs internet each time it opens, as the page is not cached for offline use.
@@ -79,12 +79,12 @@ The menu item only shows on the live page, not on a copy opened from your disk. 
 **C. Offline, with a hotkey (macOS and Chrome).** A web page cannot catch a key while another app has focus, so this needs something on the Mac to open it. Download or clone this repository. `hotkey/open-layer-map.sh` opens the local `index.html` as its own small Chrome window (Chrome's `--app` mode, with no tabs or address bar). Point a hotkey at this command:
 
 ```
-sh /path/to/vial-layers/hotkey/open-layer-map.sh
+sh /path/to/vial-keyboard-layers/hotkey/open-layer-map.sh
 ```
 
 1. **macOS Shortcuts (built in).** New shortcut, add **Run Shell Script** with that command, then in the shortcut's details choose **Add Keyboard Shortcut**.
 2. **Alfred (Powerpack).** A workflow with a **Hotkey** trigger, then **Run Script** with that command.
-3. **Karabiner-Elements.** Edit the path in `hotkey/karabiner-vial-layers.json` to where you put this folder, copy the file into `~/.config/karabiner/assets/complex_modifications/`, then in Karabiner: Complex Modifications, Add rule, enable **Vial layer map**. The trigger is Hyper+K (Ctrl+Opt+Shift+Cmd+K).
+3. **Karabiner-Elements.** Edit the path in `hotkey/karabiner-vial-layers.json` to where you put this folder, copy the file into `~/.config/karabiner/assets/complex_modifications/`, then in Karabiner: Complex Modifications, Add rule, enable **Vial Keyboard Layers**. The trigger is Hyper+K (Ctrl+Opt+Shift+Cmd+K).
 
 The script needs macOS and Google Chrome. It is run with `sh`, so it does not need to be made executable. The window has no tabs, so links from it (**Edit in Vial**, the credit links) open in your normal Chrome window. An optional argument opens a layer: `open-layer-map.sh 1` opens layer 1.
 
@@ -153,4 +153,4 @@ To change the built-in layout: copy your `.vil` into `layouts/`, then run `pytho
 
 MIT, see [LICENSE](LICENSE).
 
-Vial Layer Map is an independent project, not affiliated with Vial.
+Vial Keyboard Layers is an independent project, not affiliated with Vial.

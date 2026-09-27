@@ -1,4 +1,4 @@
-# Vial Layer Map
+# Vial Keyboard Layers
 
 See every layer of a Vial keyboard layout on one screen, in plain words. A single static
 `index.html` — no build step, no server, no dependencies.

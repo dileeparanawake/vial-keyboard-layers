@@ -1,8 +1,8 @@
 {
-  "title": "Vial layer map",
+  "title": "Vial Keyboard Layers",
   "rules": [
     {
-      "description": "Hyper+K (Ctrl+Opt+Shift+Cmd+K) opens the Vial layer map",
+      "description": "Hyper+K (Ctrl+Opt+Shift+Cmd+K) opens Vial Keyboard Layers",
       "manipulators": [
         {
           "type": "basic",

@@ -1,6 +1,6 @@
 {
-  "name": "Vial Layer Map",
-  "short_name": "Layer Map",
+  "name": "Vial Keyboard Layers",
+  "short_name": "Keyboard Layers",
   "description": "See every layer of your Vial keyboard layout on one screen, in plain words.",
   "start_url": "./",
   "scope": "./",
