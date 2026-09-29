@@ -282,6 +282,11 @@ t('the credit goes to the GitHub profile, the GitHub icon to this repo', () => {
   assert.match(html, /const SITE_URL = 'https:\/\/github\.com\/dileeparanawake';/);
   assert.match(html, /class="icon" href="https:\/\/github\.com\/dileeparanawake\/vial-keyboard-layers"/);
 });
+t('the footer shows the version, linking to that release', () => {
+  const m = html.match(/id="version" href="https:\/\/github\.com\/dileeparanawake\/vial-keyboard-layers\/releases\/tag\/(v\d+\.\d+\.\d+)"[^>]*>(v\d+\.\d+\.\d+)<\/a>/);
+  assert.ok(m, 'version link in the footer');
+  assert.equal(m[1], m[2]);
+});
 t('rejects non-vil JSON', () => {
   assert.throws(() => VL.analyse({ foo: 1 }), /no "layout"/);
 });

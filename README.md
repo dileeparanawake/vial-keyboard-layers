@@ -8,12 +8,12 @@ See every layer of your Vial keyboard layout on one screen, in plain words inste
 
 - **In a browser:** open **[dileeparanawake.github.io/vial-keyboard-layers](https://dileeparanawake.github.io/vial-keyboard-layers/)**. Nothing to install.
 - **On a Mac, as its own app:** a Dock icon, works offline, one hotkey opens and quits it. See [C. Mac app](#c-as-its-own-mac-app-recommended-on-a-mac).
-- **From a download:** download this repo and double-click `index.html`. No install, no server.
+- **From a download:** get the [latest release](https://github.com/dileeparanawake/vial-keyboard-layers/releases/latest) (Source code, zip), unzip it and double-click `index.html`. No install, no server.
 
 Then, in Vial, File, Save current layout, and drop the `.vil` on the page.
 
 - **Nothing collected.** No account, no tracking, no uploads. Your `.vil` never leaves your machine.
-- **Lightweight.** One HTML file, about 100 KB, no dependencies, no build step.
+- **Lightweight.** One HTML file, about 120 KB, no dependencies, no build step.
 - **Four ways in.** A browser tab, an installed web app, its own Mac app, or a Chrome window on a hotkey. See [Ways to open it](#ways-to-open-it).
 
 **Contents:** [Why](#why-it-exists) · [How to use it](#how-to-use-it) · [Ways to open it](#ways-to-open-it) · [Privacy](#privacy) · [What it works with](#what-it-works-with) · [Limitations](#limitations) · [Related tools](#related-tools) · [Files](#files)
@@ -58,7 +58,12 @@ Your layout shows straight away. A note says **Loaded your-file.vil · 5 layers*
   - With reduced motion set in your system, the keys change shade without moving.
 - **Double-click a layer name** to rename it. Names are guessed from the contents (arrows make **Nav**, mouse keys **Mouse**, media keys **Media**, digits **Num**). Your renames are remembered per layout.
 - **A + after a legend** means the key does more (double-tap, tap then hold). The single-layer view spells it out.
+- **One layer on its own** (press its number): larger legends, each extra on its own line, and the key you hold to reach the layer outlined.
+
+  ![The Nav layer on its own: arrows, page keys and mouse keys in large legends, with what Shift types on its own line](docs/screenshot-nav-layer.png)
+
 - **Small raised characters** after a digit or symbol are what Shift types, as on a keycap: `/?`, `3#`. More below.
+- **The version** shows in the footer (`v1.3.1`), linking to its release notes.
 - **An empty layer** is a small dimmed number in a dashed outline among the layer buttons. Click it (or press its number) and it says it's empty; it has no place on the keys.
 - **Under the map:** the tap dances, macros, combos and key overrides in use.
 - **Open on a layer:** `index.html?layer=1` opens straight onto layer 1; `?layer=all` onto the overview.
