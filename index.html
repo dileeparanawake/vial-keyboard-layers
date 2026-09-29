@@ -55,8 +55,7 @@ header {
   background: var(--panel); position: sticky; top: 0; z-index: 5;
 }
 header h1 { font-size: 14px; margin: 0; font-weight: 700; letter-spacing: 0.01em; white-space: nowrap; }
-.file { color: var(--muted); font-size: 12px; white-space: nowrap; }
-header .file { display: none; }
+.file { display: none; }
 .spacer { flex: 1; }
 .tools { display: flex; align-items: center; gap: 4px; }
 .btn {
@@ -74,7 +73,7 @@ header .file { display: none; }
 .ibtn.load { border-color: var(--accent); color: var(--accent); gap: 5px; grid-auto-flow: column; }
 .ibtn.load:hover { border-color: var(--text); color: var(--text); }
 .ibtn[hidden] { display: none; }
-.ibtn .label { display: none; font-weight: 600; font-size: 12px; }
+.ibtn .label { display: none; font-weight: 600; font-size: 12px; max-width: 14em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (min-width: 720px) { .ibtn .label { display: inline; } }
 .ibtn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .btn:focus-visible, .ibtn:focus-visible, .chip:focus-visible, .key:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
@@ -91,14 +90,10 @@ nav.layers { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 }
 .chip .reach { font-weight: 400; color: var(--muted); font-size: 12px; display: none; }
 .chip[aria-pressed="true"] { border-color: var(--lc, var(--text)); box-shadow: 0 0 0 1px var(--lc, var(--text)) inset; }
-.chip.empty { opacity: 0.6; }
-.hidden-note { color: var(--muted); font-size: 12px; display: none; }
+/* An empty layer: just its number, dimmed, in a dashed outline. Clicked, it says it's empty. */
+.chip.empty { padding: 0 3px; border-style: dashed; color: var(--muted); }
 @media (min-width: 1280px) {
-  .chip .reach, .hidden-note { display: inline; }
-}
-/* The file's name is in the Load button's tooltip; it shows in the toolbar only when there is room. */
-@media (min-width: 1600px) {
-  header .file { display: inline; }
+  .chip .reach { display: inline; }
 }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 main { padding: 6px 8px 32px; }
@@ -146,6 +141,8 @@ main { padding: 6px 8px 32px; }
 .key .cell.base { font-size: clamp(11px, calc(var(--u) * 0.21), 22px); font-weight: 600; }
 .key .cell.hold { color: var(--muted); }
 .key .more { color: var(--muted); font-weight: 800; font-size: 0.75em; margin-left: 1px; }
+/* What Shift types, raised and smaller after the legend, like the upper symbol on a keycap. */
+.key .shift { font-size: 0.72em; vertical-align: 0.4em; margin-left: 0.14em; font-weight: 700; }
 .board-wrap { overflow-x: auto; }
 .board.compact .key { padding: 1.5px 2.5px; border-width: 1px; }
 /* single-layer view */
@@ -188,9 +185,11 @@ main { padding: 6px 8px 32px; }
 .note-edit input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 .note-actions { margin: 10px 0 0; }
 .ref .hint { color: var(--muted); margin: 0; }
+/* The credit stays in view, pinned to the bottom of the window; the board sizes itself above it. */
 footer.credit {
-  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 14px;
-  padding: 18px 16px 24px; border-top: 1px solid var(--key-edge); color: var(--muted); font-size: 13px;
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 14px;
+  padding: 4px 16px; border-top: 1px solid var(--key-edge); color: var(--muted); font-size: 13px;
+  background: var(--panel); position: sticky; bottom: 0; z-index: 5;
 }
 footer.credit a { color: var(--muted); text-decoration: none; }
 footer.credit a:hover, footer.credit a:focus-visible { color: var(--text); text-decoration: underline; }
@@ -221,6 +220,19 @@ body.dragging .drop { display: grid; }
 kbd { border: 1px solid var(--key-edge); border-bottom-width: 2px; border-radius: 5px; padding: 0 6px; font: 600 13px ui-monospace, Menlo, monospace; background: var(--key); }
 a.btn { text-decoration: none; }
 .error { color: #ff8a8a; font-weight: 700; padding: 8px 16px; }
+/* Names that may be out of date since the layout changed, each with what to do about it. */
+.notice { margin: 6px 12px 0; padding: 6px 12px; border: 1px solid var(--accent); border-radius: 8px; background: var(--panel); font-size: 13px; }
+.notice[hidden] { display: none; }
+/* A short note that a file loaded, above the credit bar. */
+.toast {
+  position: fixed; left: 50%; bottom: 48px; translate: -50% 8px; z-index: 25; pointer-events: none;
+  background: var(--panel); color: var(--text); border: 1px solid var(--accent); border-radius: 8px;
+  padding: 7px 14px; font-size: 14px; font-weight: 600; opacity: 0; transition: opacity 160ms, translate 160ms;
+}
+.toast.show { opacity: 1; translate: -50% 0; }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+.notice p { margin: 3px 0; }
+.notice .btn { margin-left: 6px; }
 a { color: var(--accent); }
 .rename { font: inherit; font-weight: 600; width: 9em; background: var(--bg); border: 1px solid var(--key-edge); border-radius: 6px; padding: 0 4px; }
 /* The title gives its room to the board's controls in a smaller window; screen readers still get it. */
@@ -260,6 +272,7 @@ a { color: var(--accent); }
     </button>
     <input type="file" id="file-input" accept=".vil,.json,application/json" hidden>
     <button class="ibtn" id="os-btn" title="Labels for Mac or PC (M)">Mac</button>
+    <button class="ibtn" id="lang-btn" title="Your computer's keyboard layout, US or UK: what Shift types (L)">US</button>
     <button class="ibtn" id="theme-btn" title="Switch light or dark" aria-label="Switch to the light theme">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>
     </button>
@@ -272,6 +285,8 @@ a { color: var(--accent); }
   </div>
 </header>
 <div class="error" id="error" role="alert" hidden></div>
+<div class="notice" id="notice" role="status" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <main>
   <div class="board-wrap" id="board-wrap"><div class="board" id="board" role="group" aria-label="Keyboard"></div></div>
   <div class="detail" id="detail" aria-live="polite"></div>
@@ -279,7 +294,7 @@ a { color: var(--accent); }
 </main>
 <footer class="credit">
   <a id="credit-site" href="#" target="_blank" rel="noopener">Built by Dileepa Ranawake</a>
-  <a class="icon" href="https://github.com/dileeparanawake" target="_blank" rel="noopener" aria-label="Dileepa Ranawake on GitHub" title="GitHub">
+  <a class="icon" href="https://github.com/dileeparanawake/vial-keyboard-layers" target="_blank" rel="noopener" aria-label="Vial Keyboard Layers on GitHub" title="The code on GitHub">
     <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
   </a>
   <a class="icon" href="https://www.linkedin.com/in/dileepa-ranawake/" target="_blank" rel="noopener" aria-label="Dileepa Ranawake on LinkedIn" title="LinkedIn">
@@ -296,6 +311,7 @@ a { color: var(--accent); }
       <dt><kbd>&larr;</kbd> <kbd>&rarr;</kbd></dt><dd>Previous or next layer</dd>
       <dt><kbd>O</kbd></dt><dd>Load your .vil (or drop it on the page). It is remembered in this browser</dd>
       <dt><kbd>M</kbd></dt><dd>Mac or PC labels</dd>
+      <dt><kbd>L</kbd></dt><dd>US or UK keyboard layout on your computer: what Shift types (Shift+3 is # or £)</dd>
       <dt><kbd>V</kbd></dt><dd>Open Vial web in a new tab, to change the layout</dd>
       <dt><kbd>?</kbd></dt><dd>This help</dd>
       <dt>Hover or click a key</dt><dd>Everything it does, on every layer</dd>
@@ -320,7 +336,8 @@ const VL = (() => {
 
   // ---------- basic keycodes ----------
   const BASIC = {};
-  const add = (label, names, full) => names.split(' ').forEach(n => { BASIC[n] = { label, full: full || label }; });
+  // id: the first name, so every alias of a key finds the same entry in TYPING below.
+  const add = (label, names, full) => { const id = names.split(' ')[0]; names.split(' ').forEach(n => { BASIC[n] = { label, full: full || label, id }; }); };
   'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(ch => add(ch, 'KC_' + ch));
   '1234567890'.split('').forEach(d => add(d, 'KC_' + d));
   for (let i = 1; i <= 24; i++) add('F' + i, 'KC_F' + i);
@@ -370,6 +387,38 @@ const VL = (() => {
     COLN: ':', COLON: ':', DQUO: '"', DQT: '"', DOUBLE_QUOTE: '"', LT: '<', LABK: '<', LEFT_ANGLE_BRACKET: '<', GT: '>', RABK: '>',
     RIGHT_ANGLE_BRACKET: '>', QUES: '?', QUESTION: '?' };
   Object.entries(SHIFTED).forEach(([k, v]) => add(v, 'KC_' + k));
+  // Each shifted-symbol keycode is Shift plus a key, e.g. KC_HASH is Shift+3. On a UK layout that
+  // types £, not #, so these are read through the key they shift.
+  const SHIFT_OF = { TILD: 'GRAVE', TILDE: 'GRAVE', EXLM: '1', EXCLAIM: '1', AT: '2', HASH: '3', DLR: '4', DOLLAR: '4', PERC: '5', PERCENT: '5',
+    CIRC: '6', CIRCUMFLEX: '6', AMPR: '7', AMPERSAND: '7', ASTR: '8', ASTERISK: '8', LPRN: '9', LEFT_PAREN: '9', RPRN: '0', RIGHT_PAREN: '0',
+    UNDS: 'MINUS', UNDERSCORE: 'MINUS', PLUS: 'EQUAL', LCBR: 'LBRACKET', LEFT_CURLY_BRACE: 'LBRACKET', RCBR: 'RBRACKET', RIGHT_CURLY_BRACE: 'RBRACKET',
+    PIPE: 'BSLASH', COLN: 'SCOLON', COLON: 'SCOLON', DQUO: 'QUOTE', DQT: 'QUOTE', DOUBLE_QUOTE: 'QUOTE', LT: 'COMMA', LABK: 'COMMA',
+    LEFT_ANGLE_BRACKET: 'COMMA', GT: 'DOT', RABK: 'DOT', RIGHT_ANGLE_BRACKET: 'DOT', QUES: 'SLASH', QUESTION: 'SLASH' };
+
+  // ---------- what a key types with Shift (and Opt or AltGr) ----------
+  // The keyboard sends a key's place; the computer's layout picks the character. So what Shift
+  // types depends on it: US, or UK on a Mac or a PC. Letters are left out, as Shift gives the
+  // capital. base: a UK key that types something else unshifted. alt: Opt (Mac) or AltGr (PC).
+  const SHIFT_US = { KC_1: '!', KC_2: '@', KC_3: '#', KC_4: '$', KC_5: '%', KC_6: '^', KC_7: '&', KC_8: '*', KC_9: '(', KC_0: ')',
+    KC_MINUS: '_', KC_EQUAL: '+', KC_LBRACKET: '{', KC_RBRACKET: '}', KC_BSLASH: '|', KC_NONUS_BSLASH: '|', KC_SCOLON: ':',
+    KC_QUOTE: '"', KC_GRAVE: '~', KC_COMMA: '<', KC_DOT: '>', KC_SLASH: '?' };
+  const TYPING = {
+    'uk-mac': { KC_2: { alt: '€' }, KC_3: { shift: '£', alt: '#' }, KC_NONUS_BSLASH: { base: '§', full: 'Section sign', shift: '±' } },
+    'uk-pc': { KC_2: { shift: '"' }, KC_3: { shift: '£' }, KC_4: { alt: '€' }, KC_QUOTE: { shift: '@' }, KC_GRAVE: { shift: '¬' },
+      KC_NONUS_HASH: { shift: '~' }, KC_BSLASH: { base: '#', full: 'Hash', shift: '~' } }
+  };
+  const typed = (id, os, lang) => Object.assign({ shift: SHIFT_US[id] || null, alt: null }, lang === 'uk' ? TYPING['uk-' + os][id] : null);
+  const MODLAB = { mac: { shift: '⇧', alt: '⌥' }, pc: { shift: 'Shift', alt: 'AltGr' } };
+  const MODNAME = { mac: { shift: 'Shift', alt: 'Opt' }, pc: { shift: 'Shift', alt: 'AltGr' } };
+  // A key override that swaps what this key types with Shift held, on this layer. Vial marks an
+  // override in use with bit 7 of its options; trigger_mods is QMK's mod bits (Shift: 0x02, 0x20).
+  function shiftOverride(a, ctx) {
+    const kos = ctx.vil && ctx.vil.key_override;
+    if (!Array.isArray(kos) || ctx.layer == null) return null;
+    const o = kos.find(o => o && o.trigger === a && (o.options & 0x80) && ((o.layers >> ctx.layer) & 1) &&
+      (o.trigger_mods & 0x22) && !(o.trigger_mods & ~0x22));
+    return o ? describe(o.replacement, Object.assign({}, ctx, { layer: null, notes: null }), 3) : null;
+  }
   // media and system
   add('Mute', 'KC_MUTE KC_AUDIO_MUTE KC__MUTE');
   add('Vol +', 'KC_VOLU KC_AUDIO_VOL_UP KC__VOLUP KC_KB_VOLUME_UP', 'Volume up');
@@ -555,14 +604,21 @@ const VL = (() => {
     const note = raw && ctx.notes ? ctx.notes[raw] : '';
     if (note) {
       out.note = note; out.sub = out.tap || out.sub; out.tap = note;
-      out.full = note + ' (your name). ' + out.full;
+      out.full = note + ' (your name for ' + out.full + ')';
+      if (out.lines) out.lines = [note + ' (your name)'].concat(out.lines);
+      // A name that may no longer fit what the key does: marked with a ?, and said in words.
+      const flag = ctx.flags && ctx.flags[raw];
+      if (flag) {
+        out.stale = flag; out.tap = note + '?';
+        out.full += '. May be out of date: ' + (flag.how === 'moved' ? 'this macro moved to slot ' + flag.to.slice(1) : 'this macro has changed since you named it');
+      }
     }
     return out;
   }
   function describeCode(code, ctx, depth) {
     depth = depth || 0;
     const os = ctx.os || 'mac';
-    const out = { kind: 'key', tap: '', sub: null, hold: null, holdLayer: null, extras: [], full: '', layerLinks: [], raw: code };
+    const out = { kind: 'key', tap: '', sub: null, shift: null, alt: null, hold: null, holdLayer: null, extras: [], full: '', layerLinks: [], raw: code };
     const node = parse(code);
     if (!node) { out.kind = 'absent'; return out; }
     if (node.atom !== undefined) {
@@ -586,7 +642,26 @@ const VL = (() => {
       }
       const u = a.match(/^(?:USER|QK_KB_|QK_USER_)(\d+)$/);
       if (u) { out.tap = 'User ' + +u[1]; out.full = 'Custom keycode ' + a; return out; }
-      if (BASIC[a]) { out.tap = BASIC[a].label; out.full = BASIC[a].full; return out; }
+      if (BASIC[a]) {
+        const b = BASIC[a], lang = ctx.lang || 'us';
+        const of = a.startsWith('KC_') ? SHIFT_OF[a.slice(3)] : null;
+        if (of) {
+          const k = BASIC['KC_' + of], t = typed(k.id, os, lang);
+          out.tap = t.shift || b.label; out.full = b.full;
+          if (out.tap !== b.label) out.full = out.tap + ' (' + MODNAME[os].shift + ' + ' + (t.base || k.label) + '; ' + b.label + ' on a US layout)';
+          return out;
+        }
+        let t = typed(b.id, os, lang);
+        out.tap = t.base || b.label; out.full = t.full || b.full;
+        const ko = shiftOverride(a, ctx);
+        if (ko) t = Object.assign({}, t, { shift: ko.tap, ko: ko.full });
+        out.lines = [out.full];
+        if (t.shift) { out.shift = t.shift; out.lines.push(MODNAME[os].shift + ': ' + (t.ko ? t.ko + ' (key override)' : t.shift)); }
+        if (t.alt) { out.alt = t.alt; out.lines.push(MODNAME[os].alt + ': ' + t.alt); }
+        out.full = out.lines.join('. ');
+        if (out.lines.length < 2) delete out.lines;
+        return out;
+      }
       if (/^0x[0-9a-f]+$/i.test(a)) { out.tap = a; out.full = 'Raw keycode ' + a + ' (not recognised)'; return out; }
       out.tap = prettify(a); out.full = a;
       return out;
@@ -601,8 +676,9 @@ const VL = (() => {
       const n = lt ? +lt[1] : num(args[0]);
       const k = inner(lt ? args[0] : args[1]);
       out.kind = 'key';
-      out.tap = k.tap; out.sub = k.sub; out.hold = layerName(n); out.holdLayer = n;
-      out.full = 'Tap: ' + k.full + '. Hold: ' + layerName(n) + ' layer while held';
+      out.tap = k.tap; out.sub = k.sub; out.shift = k.shift; out.alt = k.alt; out.hold = layerName(n); out.holdLayer = n;
+      out.lines = ['Tap: ' + k.full, 'Hold: ' + layerName(n) + ' layer while held'];
+      out.full = out.lines.join('. ');
       out.layerLinks.push({ layer: n, how: 'hold' });
       return out;
     }
@@ -644,8 +720,9 @@ const VL = (() => {
     if (fn === 'MT' || (mtName && MODFN[mtName] !== undefined)) {
       const m = fn === 'MT' ? parseModConst(args[0]) : modSet(MODFN[mtName]);
       const k = inner(fn === 'MT' ? args[1] : args[0]);
-      out.tap = k.tap; out.sub = k.sub; out.hold = modWords(m, os); out.holdIsMod = true;
-      out.full = 'Tap: ' + k.full + '. Hold: ' + modFull(m, os);
+      out.tap = k.tap; out.sub = k.sub; out.shift = k.shift; out.alt = k.alt; out.hold = modWords(m, os); out.holdIsMod = true;
+      out.lines = ['Tap: ' + k.full, 'Hold: ' + modFull(m, os)];
+      out.full = out.lines.join('. ');
       return out;
     }
     // modifier-wrapped key, e.g. LGUI(KC_Z) or LCTL(LSFT(KC_A))
@@ -678,6 +755,7 @@ const VL = (() => {
       .filter(p => used(p[2]) && typeof p[1] === 'string').map(p => ({ label: p[0], code: p[1].trim() }));
     out.tap = used(T) ? T.tap : 'TD ' + n;
     out.sub = used(T) ? T.sub : null;
+    if (used(T)) { out.shift = T.shift; out.alt = T.alt; }
     if (used(H)) {
       if (H.kind === 'layer' && H.holdLayer !== null) { out.hold = H.tap; out.holdLayer = H.holdLayer; }
       else { out.hold = H.tap; out.holdIsMod = !!H.isMod; }
@@ -690,6 +768,8 @@ const VL = (() => {
     if (used(D)) parts.push('Double-tap: ' + D.full);
     if (used(TH)) parts.push('Tap then hold: ' + TH.full);
     out.full = 'Tap dance ' + n + '. ' + parts.join('. ') + (term ? '. (' + term + ' ms)' : '');
+    // For the tooltip: one line per action, so a tap dance reads at a glance.
+    out.lines = ['Tap dance ' + n + (term ? ' (' + term + ' ms)' : '')].concat(parts);
     const link = (x, how) => { if (x.kind === 'layer' && x.layerRef !== undefined) out.layerLinks.push({ layer: x.layerRef, how: how === 'hold' ? x.layerHow : how }); };
     link(H, 'hold'); link(D, 'double-tap'); link(TH, 'tap-hold');
     if (T.kind === 'layer') out.layerLinks.push({ layer: T.layerRef, how: T.layerHow });
@@ -705,7 +785,7 @@ const VL = (() => {
     let held = []; let emitted = true;
     const labelOf = kcs => {
       let m = emptyMods(); const keys = [];
-      kcs.forEach(k => { if (MODKEYS[k]) m = mergeMods(m, modSet(MODKEYS[k])); else keys.push(describe(k, { os, vil: ctx.vil }, 3).tap); });
+      kcs.forEach(k => { if (MODKEYS[k]) m = mergeMods(m, modSet(MODKEYS[k])); else keys.push(describe(k, { os, lang: ctx.lang, vil: ctx.vil }, 3).tap); });
       if (!keys.length) return modWords(m, os);
       const ch = chordLabel(m, keys.join(' '), os);
       return anyMods(m) ? (FRIENDLY[os][ch] ? FRIENDLY[os][ch] + ' (' + ch + ')' : ch) : ch;
@@ -725,6 +805,29 @@ const VL = (() => {
     const long = parts.join(', then ');
     const short = parts.length === 1 ? parts[0].replace(/ \(.+\)$/, '') : parts.join(', ');
     return { short: short || 'Macro ' + n, long: long || 'empty' };
+  }
+
+  // ---------- are your names still right? ----------
+  // A name is kept by keycode (M3), but what a macro does lives in the layout, so it can change
+  // under its name. A print of what the macro did when it was named tells, on each load: the same,
+  // changed, or moved to another slot. prints: { M3: '<what it did>' }. A name with no print yet
+  // takes the macro as it is now (first sight). Returns the prints to keep, and a flag per name
+  // that needs a look: { M3: { how: 'changed' } } or { M3: { how: 'moved', to: 'M5' } }.
+  const macroPrint = (vil, code) => { const m = /^M(\d+)$/.exec(code); return m ? JSON.stringify(((vil && vil.macro) || [])[+m[1]] || []) : null; };
+  function checkNames(vil, notes, prints) {
+    const out = { prints: {}, flags: {}, added: false };
+    Object.keys(notes || {}).forEach(code => {
+      const now = macroPrint(vil, code);
+      if (now === null) return;
+      const was = prints && typeof prints[code] === 'string' ? prints[code] : null;
+      if (was === null) { out.prints[code] = now; out.added = true; return; }
+      out.prints[code] = was;
+      if (was === now) return;
+      const to = was === '[]' ? null : ((vil && vil.macro) || []).map((_, i) => 'M' + i)
+        .find(c => c !== code && !notes[c] && macroPrint(vil, c) === was);
+      out.flags[code] = to ? { how: 'moved', to } : { how: 'changed' };
+    });
+    return out;
   }
 
   // ---------- geometry ----------
@@ -842,8 +945,9 @@ const VL = (() => {
     const seen = {};
     guessed.forEach((n, i) => { if (seen[n]) guessed[i] = n + ' ' + i; seen[n] = true; });
     const names = L.map((_, i) => (opts.names && opts.names[i]) || guessed[i]);
-    const ctx = { os, vil, notes: opts.notes || null, layerName: n => (names[n] !== undefined ? names[n] : 'Layer ' + n) };
-    const cells = L.map(layer => geo.keys.map(k => describe(layer[k.r] ? layer[k.r][k.c] : -1, ctx)));
+    const ctx = { os, lang: opts.lang || 'us', vil, notes: opts.notes || null, flags: opts.flags || null, layerName: n => (names[n] !== undefined ? names[n] : 'Layer ' + n) };
+    // Each layer's keys know their layer, for key overrides that apply only on some layers.
+    const cells = L.map((layer, li) => { const lctx = Object.assign({}, ctx, { layer: li }); return geo.keys.map(k => describe(layer[k.r] ? layer[k.r][k.c] : -1, lctx)); });
     const layers = L.map((layer, i) => {
       const empty = cells[i].every(d => d.kind === 'none' || d.kind === 'trans' || d.kind === 'absent');
       return { index: i, name: names[i], guessed: guessed[i], empty, reach: [] };
@@ -894,7 +998,7 @@ const VL = (() => {
     return (x + 0.05) / (y + 0.05);
   }
 
-  return { parse, describe, analyse, geometry, bounds, guessLayerName, macroText, reachText, modWords, chordLabel, THEMES, contrast, planSize, MIN_U, LABEL_H, HALF_GAP };
+  return { parse, describe, analyse, geometry, bounds, guessLayerName, macroText, reachText, modWords, chordLabel, THEMES, contrast, planSize, MIN_U, LABEL_H, HALF_GAP, MODLAB, MODNAME, checkNames, macroPrint };
 })();
 if (typeof module !== 'undefined') module.exports = VL;
 // @core-end
@@ -903,8 +1007,8 @@ if (typeof module !== 'undefined') module.exports = VL;
 <script>
 (() => {
   'use strict';
-  // Where "Built by Dileepa Ranawake" points. One place to change it.
-  const SITE_URL = 'https://dileeparanawake.com';
+  // Where "Built by Dileepa Ranawake" points: his GitHub profile. One place to change it.
+  const SITE_URL = 'https://github.com/dileeparanawake';
   const LS = {
     get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* storage unavailable */ } },
@@ -917,9 +1021,11 @@ if (typeof module !== 'undefined') module.exports = VL;
   const state = {
     vil: null, fileName: '', model: null,
     view: 'all', os: prefs.os || 'mac', theme: prefs.theme || 'dark',
+    // The computer's keyboard layout, for what Shift types. A first guess from the browser's language.
+    lang: prefs.lang || ((navigator.languages || [navigator.language || '']).some(l => /^en-(GB|IE)$/i.test(l)) ? 'uk' : 'us'),
     hover: null, pinned: null, names: {}
   };
-  const savePrefs = () => LS.set('vial-layers:prefs', JSON.stringify({ os: state.os, theme: state.theme }));
+  const savePrefs = () => LS.set('vial-layers:prefs', JSON.stringify({ os: state.os, lang: state.lang, theme: state.theme }));
   const theme = () => VL.THEMES[state.theme] || VL.THEMES.dark;
   const colour = i => theme().palette[i % theme().palette.length];
   function applyTheme() {
@@ -939,23 +1045,48 @@ if (typeof module !== 'undefined') module.exports = VL;
   let defaultNotes = { uid: null, notes: {} };
   try { const o = JSON.parse($('default-notes').textContent || 'null'); if (o && o.notes) defaultNotes = o; } catch (e) { /* no embedded notes */ }
   const readEdits = () => { try { return JSON.parse(LS.get(notesKey()) || '{}') || {}; } catch (e) { return {}; } };
+  const defaultsApply = () => defaultNotes.uid == null || String(defaultNotes.uid) === layoutId();
   function mergedNotes() {
-    const applies = defaultNotes.uid == null || String(defaultNotes.uid) === layoutId();
-    const out = Object.assign({}, applies ? defaultNotes.notes : {});
+    const out = Object.assign({}, defaultsApply() ? defaultNotes.notes : {});
     Object.entries(readEdits()).forEach(([k, v]) => { if (v) out[k] = v; else delete out[k]; });
     return out;
   }
+  // What each named macro did when it was named (VL.checkNames), in a storage key of its own, so
+  // names saved before prints existed still load as they were. notes.json can carry them too.
+  const printsKey = () => 'vial-layers:prints:' + layoutId();
+  function readPrints() {
+    let p = null;
+    try { p = JSON.parse(LS.get(printsKey()) || 'null'); } catch (e) { /* none saved yet */ }
+    return p && typeof p === 'object' ? p : Object.assign({}, (defaultsApply() && defaultNotes.prints) || {});
+  }
+  const savePrints = p => LS.set(printsKey(), JSON.stringify(p));
   function setNote(code, label) {
     const edits = readEdits();
     edits[code] = String(label || '').trim();
     LS.set(notesKey(), JSON.stringify(edits));
+    // A name given now names the macro as it is now.
+    const p = readPrints(), now = VL.macroPrint(state.vil, code);
+    if (now !== null) { if (edits[code]) p[code] = now; else delete p[code]; savePrints(p); }
     rebuild();
+  }
+  // A flagged name: still right (it now names the macro as it is), moved with its macro, or removed.
+  function settleName(act, code) {
+    const p = readPrints(), flag = (state.flags || {})[code];
+    if (act === 'keep') { p[code] = VL.macroPrint(state.vil, code); savePrints(p); rebuild(); }
+    else if (act === 'move' && flag && flag.to) {
+      const edits = readEdits();
+      edits[flag.to] = mergedNotes()[code]; edits[code] = '';
+      p[flag.to] = p[code]; delete p[code];
+      LS.set(notesKey(), JSON.stringify(edits)); savePrints(p); rebuild();
+    } else if (act === 'remove') setNote(code, '');
   }
   function exportNotes() {
     const data = {
       about: 'Your own names for what keys do, keyed by Vial keycode. Save over notes.json beside index.html, then run python3 tools/embed.py.',
-      uid: '__UID__', notes: mergedNotes()
+      uid: '__UID__', notes: mergedNotes(), prints: {}
     };
+    const p = readPrints();
+    Object.keys(data.notes).forEach(k => { if (typeof p[k] === 'string') data.prints[k] = p[k]; });
     const json = JSON.stringify(data, null, 2).replace('"__UID__"', state.uidText || (state.vil && state.vil.uid != null ? String(state.vil.uid) : 'null')) + '\n';
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
@@ -965,15 +1096,23 @@ if (typeof module !== 'undefined') module.exports = VL;
     return json;
   }
   function importNotes(o, fileName) {
-    if (!o || typeof o.notes !== 'object' || Array.isArray(o.notes)) { showError(fileName + ' has no "notes" to import.'); return; }
+    if (!o || typeof o.notes !== 'object' || Array.isArray(o.notes)) { showError(fileName + ' has no "notes" to import.'); return false; }
     const edits = {};
     Object.keys(mergedNotes()).forEach(k => { edits[k] = ''; });
     Object.entries(o.notes).forEach(([k, v]) => { if (typeof v === 'string') edits[k] = v.trim(); });
     LS.set(notesKey(), JSON.stringify(edits));
+    // Prints come with the names they belong to; a file without them starts from first sight.
+    savePrints(o.prints && typeof o.prints === 'object' ? o.prints : {});
     showError('');
     rebuild();
+    return true;
   }
 
+  let toastTimer;
+  function toast(msg) {
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+  }
   function showError(msg) { const e = $('error'); e.textContent = msg || ''; e.hidden = !msg; }
 
   // Loads a layout. remember: keep it in this browser as the last one loaded (a file you chose),
@@ -994,8 +1133,12 @@ if (typeof module !== 'undefined') module.exports = VL;
   }
 
   function rebuild() {
-    state.model = VL.analyse(state.vil, { os: state.os, names: state.names, notes: mergedNotes() });
-    $('file-name').textContent = state.fileName + ' · ' + state.vil.layout.length + ' layers';
+    const notes = mergedNotes();
+    const chk = VL.checkNames(state.vil, notes, readPrints());
+    if (chk.added) savePrints(Object.assign(readPrints(), chk.prints));
+    state.flags = chk.flags;
+    state.model = VL.analyse(state.vil, { os: state.os, lang: state.lang, names: state.names, notes, flags: chk.flags });
+    $('file-name').textContent = (state.builtIn ? 'the built-in example' : state.fileName) + ' · ' + state.vil.layout.length + ' layers';
     render();
   }
   const BUILT_IN_NAME = 'miryoku-11.vil (built-in example)';
@@ -1007,7 +1150,7 @@ if (typeof module !== 'undefined') module.exports = VL;
   // kept, per layout, so they are back when you load your file again.
   function resetToBuiltIn() {
     LS.remove('vial-layers:last');
-    if (loadBuiltIn()) $('open-btn').focus();
+    if (loadBuiltIn()) { $('open-btn').focus(); toast('Back to the example layout'); }
   }
 
   function visibleLayers() {
@@ -1019,16 +1162,19 @@ if (typeof module !== 'undefined') module.exports = VL;
   function renderNav() {
     const nav = $('layer-nav');
     const m = state.model;
-    const hidden = m.layers.filter(l => l.empty && l.index !== 0);
-    const hiddenText = hidden.length ? 'Hidden (empty): ' + hidden.map(l => 'layer ' + l.index).join(', ') : '';
-    let html = '<button class="chip" data-view="all" aria-pressed="' + (state.view === 'all') + '" title="All layers at once (A or Esc)' + (hiddenText ? '. ' + hiddenText : '') + '"><span class="num" style="--lc:var(--text)">A</span>All</button>';
-    for (const l of visibleLayers()) {
+    let html = '<button class="chip" data-view="all" aria-pressed="' + (state.view === 'all') + '" title="All layers at once (A or Esc)"><span class="num" style="--lc:var(--text)">A</span>All</button>';
+    for (const l of m.layers) {
+      // An empty layer (every key falls through to Base) is a small dimmed chip; it has no place on the keys.
+      if (l.empty && l.index !== 0) {
+        html += '<button class="chip empty" data-view="' + l.index + '" aria-pressed="' + (state.view === l.index) + '" title="Layer ' + l.index + ' is empty: every key falls through to Base. Press ' + l.index + ' to see it.">' +
+          '<span class="num" style="--lc:var(--faint)">' + l.index + '</span><span class="sr-only">Empty</span></button>';
+        continue;
+      }
       const reach = VL.reachText(l, m);
       // The chip shows the name; how to reach the layer is in its tooltip (and shown beside it in a wide window).
       html += '<button class="chip" data-view="' + l.index + '" style="--lc:' + colour(l.index) + '" aria-pressed="' + (state.view === l.index) + '" title="' + esc(l.name) + (reach ? ': ' + esc(reach) : '') + '. Press ' + l.index + ' to show this layer. Double-click to rename.">' +
         '<span class="num">' + l.index + '</span><span class="lname">' + esc(l.name) + '</span>' + (reach ? '<span class="reach">' + esc(reach) + '</span>' : '') + '</button>';
     }
-    if (hiddenText) html += '<span class="hidden-note">' + hiddenText + '</span>';
     nav.innerHTML = html;
   }
 
@@ -1042,7 +1188,8 @@ if (typeof module !== 'undefined') module.exports = VL;
     const g = state.model.geo;
     const wrap = $('board-wrap');
     const availW = Math.max(200, wrap.clientWidth);
-    const availH = window.innerHeight - (wrap.getBoundingClientRect().top + window.scrollY) - BOTTOM_ROOM;
+    const credit = document.querySelector('footer.credit');
+    const availH = window.innerHeight - (wrap.getBoundingClientRect().top + window.scrollY) - BOTTOM_ROOM - (credit ? credit.offsetHeight : 0);
     const p = VL.planSize(g, availW, availH);
     if (!p.stacked) return Object.assign(p, { width: g.width, x: k => k.x, y: (k, v) => k.y * v, height: v => g.height * v, labels: [] });
     const L = VL.LABEL_H, second = v => L + g.height * v + VL.HALF_GAP + L;
@@ -1207,6 +1354,11 @@ if (typeof module !== 'undefined') module.exports = VL;
     return [first].concat(middle, last ? [last] : []);
   }
 
+  // What the key types with Shift, small and raised after its legend, as on a keycap.
+  // A key's tooltip: one line per action (tap, hold, Shift...) where it has several.
+  const tip = d => (d.lines ? d.lines.join('\n') : d.full || '');
+  const shiftMark = d => (d.shift && d.kind === 'key' ? '<span class="shift">' + esc(d.shift) + '</span>' : '');
+
   function keyHTML(k, ki) {
     const m = state.model;
     const vis = visibleLayers();
@@ -1227,14 +1379,14 @@ if (typeof module !== 'undefined') module.exports = VL;
       const baseText = base.kind === 'none' || base.kind === 'absent' ? '' : base.tap;
       const baseCol = base.kind === 'layer' ? colour(base.layerRef) : colour(0);
       // Extras (double-tap, tap then hold) live in the single-layer view and the detail panel; here a "+" marks them.
-      const more = base.extras.length ? '<span class="more" aria-hidden="true">+</span>' : '';
+      const more = shiftMark(base) + (base.extras.length ? '<span class="more" aria-hidden="true">+</span>' : '');
       // One tooltip for the key's own legends (base and hold): its whole story, tap, hold, double-tap and tap then hold.
-      const baseTitle = base.full || '';
+      const baseTitle = tip(base);
       const items = [baseText ? { c: 'base', text: baseText, col: baseCol, title: baseTitle, extra: more } : null];
       slotOrder().forEach(l => {
         const d = m.cells[l.index][ki];
         const txt = d.kind === 'key' || d.kind === 'layer' ? d.tap : '';
-        items.push(txt ? { c: '', text: txt, col: colour(l.index), title: l.name + ': ' + (d.full || '') } : null);
+        items.push(txt ? { c: '', text: txt, col: colour(l.index), title: l.name + ': ' + tip(d), extra: shiftMark(d) } : null);
       });
       if (base.hold) {
         if (items.length % 2 === 0) items.push(null);
@@ -1259,13 +1411,15 @@ if (typeof module !== 'undefined') module.exports = VL;
       } else if (d.kind === 'key' || d.kind === 'layer') {
         main = d.tap;
         if (d.sub) subs.push({ lab: '', text: d.sub });
+        if (d.shift) subs.push({ lab: VL.MODLAB[state.os].shift, text: d.shift });
+        if (d.alt) subs.push({ lab: VL.MODLAB[state.os].alt, text: d.alt });
         if (d.hold) subs.push({ lab: 'hold', text: d.hold, col: d.holdLayer != null ? colour(d.holdLayer) : null, layer: d.holdLayer != null });
         d.extras.forEach(e => subs.push({ lab: e.label, text: e.text }));
       }
       const layer = m.layers[li];
       const r = layer.reach.find(x => x.key === ki && (x.from === 0 || x.from === li));
       if (r && li !== 0) cls += ' reach how-' + r.how;
-      inner += '<div class="face"><div class="row">' + (main ? cell('base', main, null, d.full || main) : '') + '</div>';
+      inner += '<div class="face"><div class="row">' + (main ? cell('base', main, null, tip(d) || main) : '') + '</div>';
       subs.forEach(s => {
         inner += '<div class="row sub">' + (s.lab ? cell('lab', s.lab, null, s.lab) : '') + cell('val', s.text, s.col, (s.lab ? s.lab + ': ' : '') + s.text, '', s.layer) + '</div>';
       });
@@ -1338,6 +1492,10 @@ if (typeof module !== 'undefined') module.exports = VL;
     const m = state.model;
     const el = $('detail');
     const ki = state.pinned != null ? state.pinned : state.hover;
+    if (ki == null && state.view !== 'all' && m.layers[state.view].empty) {
+      el.innerHTML = '<h2>Layer ' + state.view + ' is empty</h2><p class="hint">Every key falls through to Base, shown here in grey. Give it keys in Vial to use it.</p>';
+      return;
+    }
     if (ki == null) {
       el.innerHTML = '<h2>Point at a key</h2><p class="hint">Hover or click any key to see everything it does on every layer. Press a number to see one layer large, Esc for all. <b>Load .vil</b> (or drop the file on the page) shows your own layout, and it stays until you load another.</p>';
       return;
@@ -1426,23 +1584,40 @@ if (typeof module !== 'undefined') module.exports = VL;
     $('ref').innerHTML = html;
   }
 
+  function renderNotice() {
+    const el = $('notice'), notes = state.model.ctx.notes || {}, flags = Object.entries(state.flags || {});
+    const btn = (act, code, text) => '<button class="btn small" data-act="' + act + '" data-code="' + esc(code) + '">' + esc(text) + '</button>';
+    el.hidden = !flags.length;
+    el.innerHTML = flags.map(([code, f]) => {
+      const n = code.slice(1);
+      return '<p><b>' + esc(notes[code]) + '?</b> ' + (f.how === 'moved'
+        ? 'Macro ' + n + ' has changed, and what it did is now macro ' + f.to.slice(1) + '.' + btn('move', code, 'Move the name to macro ' + f.to.slice(1)) + btn('keep', code, 'Keep it on macro ' + n)
+        : 'Macro ' + n + ' has changed since you named it. It now does: ' + esc(VL.macroText(+n, state.model.ctx).long) + '.' + btn('keep', code, 'Still right') + btn('remove', code, 'Remove the name')) + '</p>';
+    }).join('');
+  }
+
   function render() {
     if (!state.model) return;
+    renderNotice();
     applyTheme();
     $('reset-btn').hidden = !!state.builtIn;
     $('reset-btn').title = 'Back to the built-in example. Showing your ' + state.fileName + '; your key names stay saved for it';
     $('os-btn').textContent = state.os === 'mac' ? 'Mac' : 'PC';
+    $('lang-btn').textContent = state.lang === 'uk' ? 'UK' : 'US';
+    $('lang-btn').setAttribute('aria-label', (state.lang === 'uk' ? 'UK' : 'US') + ' keyboard layout. Switch to ' + (state.lang === 'uk' ? 'US' : 'UK'));
     $('os-btn').setAttribute('aria-label', (state.os === 'mac' ? 'Mac' : 'PC') + ' labels. Switch to ' + (state.os === 'mac' ? 'PC' : 'Mac') + ' labels');
     $('theme-btn').setAttribute('aria-label', 'Switch to the ' + (state.theme === 'dark' ? 'light' : 'dark') + ' theme');
     $('theme-btn').title = 'Switch to the ' + (state.theme === 'dark' ? 'light' : 'dark') + ' theme';
-    $('open-btn').title = 'Load your .vil (O), or drop it anywhere on the page. Showing: ' + $('file-name').textContent;
+    // With your own file loaded, the Load button shows its name, so you can see which layout is on.
+    $('open-btn').querySelector('.label').textContent = state.builtIn ? 'Load .vil' : state.fileName;
+    $('open-btn').setAttribute('aria-label', state.builtIn ? 'Load your .vil' : 'Showing ' + state.fileName + '. Load another .vil');
+    $('open-btn').title = (state.builtIn ? 'Load your .vil (O)' : 'Showing ' + state.fileName + '. Load another .vil (O)') + ', or drop it anywhere on the page. Showing: ' + $('file-name').textContent;
     renderNav(); renderBoard(); renderDetail(); renderRef();
   }
 
   function setView(v) {
     if (!state.model) return;
-    // Empty layers are hidden from the nav, so a number key (or ?layer=) for one does nothing.
-    if (v !== 'all') { v = +v; if (!(v >= 0 && v < state.model.layers.length) || (v !== 0 && state.model.layers[v].empty)) return; }
+    if (v !== 'all') { v = +v; if (!(v >= 0 && v < state.model.layers.length)) return; }
     state.view = v; render();
   }
   function stepView(dir) {
@@ -1456,7 +1631,7 @@ if (typeof module !== 'undefined') module.exports = VL;
   $('layer-nav').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) setView(b.dataset.view === 'all' ? 'all' : +b.dataset.view); });
   $('layer-nav').addEventListener('dblclick', e => {
     const b = e.target.closest('.chip'); if (!b || b.dataset.view === 'all') return;
-    const i = +b.dataset.view; const span = b.querySelector('.lname');
+    const i = +b.dataset.view; const span = b.querySelector('.lname'); if (!span) return;
     const input = document.createElement('input'); input.className = 'rename'; input.value = state.model.layers[i].name;
     span.replaceWith(input); input.focus(); input.select();
     const done = save => {
@@ -1490,6 +1665,7 @@ if (typeof module !== 'undefined') module.exports = VL;
   });
   $('board').addEventListener('focusin', e => { const k = e.target.closest('.key'); if (k) { state.hover = +k.dataset.ki; renderDetail(); } });
 
+  $('notice').addEventListener('click', e => { const b = e.target.closest('button[data-act]'); if (b) settleName(b.dataset.act, b.dataset.code); });
   $('detail').addEventListener('click', e => { const b = e.target.closest('.name-btn'); if (b) openNoteEditor(b); });
   $('ref').addEventListener('click', e => {
     if (e.target.closest('#notes-export')) exportNotes();
@@ -1504,7 +1680,8 @@ if (typeof module !== 'undefined') module.exports = VL;
     r.onload = () => {
       const text = String(r.result);
       let o = null; try { o = JSON.parse(text); } catch (e) { /* loadText reports it */ }
-      if (o && !o.layout && o.notes) importNotes(o, f.name); else loadText(text, f.name, true);
+      if (o && !o.layout && o.notes) { if (importNotes(o, f.name)) toast('Imported names from ' + f.name); }
+      else if (loadText(text, f.name, true)) toast('Loaded ' + f.name + ' · ' + state.vil.layout.length + ' layers');
     };
     r.onerror = () => showError('Could not read ' + f.name);
     r.readAsText(f);
@@ -1516,6 +1693,7 @@ if (typeof module !== 'undefined') module.exports = VL;
   window.addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; document.body.classList.remove('dragging'); const f = e.dataTransfer.files[0]; if (f) readFile(f); });
 
   $('os-btn').addEventListener('click', () => { state.os = state.os === 'mac' ? 'pc' : 'mac'; savePrefs(); if (state.vil) rebuild(); });
+  $('lang-btn').addEventListener('click', () => { state.lang = state.lang === 'uk' ? 'us' : 'uk'; savePrefs(); if (state.vil) rebuild(); });
   $('theme-btn').addEventListener('click', () => { state.theme = state.theme === 'dark' ? 'light' : 'dark'; savePrefs(); render(); });
   const help = $('help');
   // Focus moves into the dialog on open, stays there (Close is its only control), and goes back to ? on close.
@@ -1546,6 +1724,7 @@ if (typeof module !== 'undefined') module.exports = VL;
     else if (e.key === '?') toggleHelp(true);
     else if (e.key === 'o' || e.key === 'O') $('file-input').click();
     else if (e.key === 'm' || e.key === 'M') $('os-btn').click();
+    else if (e.key === 'l' || e.key === 'L') $('lang-btn').click();
     else if (e.key === 'v' || e.key === 'V') window.open('https://vial.rocks/', '_blank', 'noopener');
   });
   // Re-fit whenever the window or the board's container changes width or height (window resize,

@@ -5,3 +5,6 @@
 # Local-only agent and planning config (never committed)
 CLAUDE.local.md
 .claude/skills/chart/
+
+# Built Mac app (sh hotkey/mac-app/build.sh)
+hotkey/mac-app/build/

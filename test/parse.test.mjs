@@ -186,6 +186,102 @@ t('hovering a tap dance, tap or hold, tells its whole story', () => {
   // The hold legend's tooltip is that same full line, not just "Hold: ..."
   assert.match(html, /c: 'hold', text: base\.hold, col: holdCol, title: baseTitle \|\|/);
 });
+t('keys show what Shift types, for a US layout by default', () => {
+  assert.equal(d('KC_SLASH').shift, '?');
+  assert.equal(d('KC_3').shift, '#');
+  assert.equal(d('KC_QUOTE').shift, '"');
+  assert.match(d('KC_SLASH').full, /Shift: \?/);
+  // Letters: Shift gives the capital, so nothing extra is shown.
+  assert.equal(d('KC_A').shift, null);
+  // Through mod-taps, layer-taps and tap dances, from the tap.
+  assert.equal(d('LT(4,KC_SLASH)').shift, '?');
+  assert.equal(d('LSFT_T(KC_DOT)').shift, '>');
+});
+t('a UK layout: £ on Shift+3, # on Opt+3 on a Mac, and a UK PC\'s own keys', () => {
+  const mac = { ...ctx, lang: 'uk' }, pc = { ...ctx, os: 'pc', lang: 'uk' };
+  assert.equal(VL.describe('KC_3', mac).shift, '£');
+  assert.equal(VL.describe('KC_3', mac).alt, '#');
+  assert.equal(VL.describe('KC_2', mac).shift, '@');
+  assert.equal(VL.describe('KC_2', pc).shift, '"');
+  assert.equal(VL.describe('KC_QUOTE', pc).shift, '@');
+  const bsls = VL.describe('KC_BSLASH', pc);
+  assert.equal(bsls.tap, '#'); assert.equal(bsls.shift, '~');
+  // A shifted-symbol keycode types what the layout gives for Shift and its key.
+  assert.equal(VL.describe('KC_HASH', mac).tap, '£');
+  assert.equal(VL.describe('KC_HASH', ctx).tap, '#');
+});
+t('the Num layer shows what Shift types on its digits', () => {
+  const m = VL.analyse(vil, { os: 'mac', lang: 'uk' });
+  const three = m.cells[4].find(c => c.raw === 'KC_3');
+  assert.equal(three.shift, '£'); assert.equal(three.alt, '#');
+  assert.ok(m.cells[0].some(c => c.raw === 'KC_SLASH' && c.shift === '?'));
+});
+t('a Shift key override replaces what Shift types, on its layers only', () => {
+  const ko = { trigger: 'KC_COMMA', replacement: 'KC_SCOLON', layers: 0b1, trigger_mods: 0x02, negative_mod_mask: 0, suppressed_mods: 0x02, options: 0x87 };
+  const v = { ...vil, key_override: [ko] };
+  assert.equal(VL.describe('KC_COMMA', { ...ctx, vil: v, layer: 0 }).shift, ';');
+  assert.equal(VL.describe('KC_COMMA', { ...ctx, vil: v, layer: 4 }).shift, '<');
+  // Not enabled (bit 7 clear): ignored.
+  assert.equal(VL.describe('KC_COMMA', { ...ctx, vil: { ...vil, key_override: [{ ...ko, options: 7 }] }, layer: 0 }).shift, '<');
+});
+t('a tap dance tooltip has one line per action', () => {
+  const noted = { ...ctx, notes: { M3: 'Alfred clipboard', M4: 'Screenshot' } };
+  const lines = Array.from(VL.describe('TD(2)', noted).lines);
+  assert.deepEqual(lines.map(l => l.split(':')[0]), ['Tap dance 2 (300 ms)', 'Tap', 'Hold', 'Tap then hold']);
+  assert.equal(lines[2], 'Hold: Alfred clipboard (your name for Macro 3: ⌥⌘C)');
+  assert.match(html, /const tip = d => \(d\.lines \? d\.lines\.join\('\\n'\)/);
+});
+t('the credit stays pinned in view', () => {
+  assert.match(html, /footer\.credit \{[^}]*position: sticky; bottom: 0/);
+});
+t('a name on a macro is kept, flagged when the macro changed, or offered to where it moved', () => {
+  const notes = { M3: 'Alfred clipboard', KC_F11: 'Show desktop' };
+  // First sight: no prints yet, so the macros as they are become the baseline. Only macros get one.
+  const first = VL.checkNames(vil, notes, null);
+  assert.equal(first.added, true);
+  assert.deepEqual(Object.keys(first.prints), ['M3']);
+  assert.deepEqual(Object.keys(first.flags), []);
+  const prints = first.prints;
+  // Same layout again: nothing to flag, nothing new to save.
+  const same = VL.checkNames(vil, notes, prints);
+  assert.equal(same.added, false); assert.deepEqual(Object.keys(same.flags), []);
+  // Macro 3 now does something else: flagged as changed.
+  const changed = { ...vil, macro: vil.macro.map((m, i) => (i === 3 ? [['tap', 'KC_A']] : m)) };
+  assert.equal(VL.checkNames(changed, notes, prints).flags.M3.how, 'changed');
+  // Macro 3 moved to slot 7: offered to move the name with it.
+  const moved = { ...vil, macro: vil.macro.map((m, i) => (i === 3 ? [] : i === 7 ? vil.macro[3] : m)) };
+  const f = VL.checkNames(moved, notes, prints).flags.M3;
+  assert.equal(f.how, 'moved'); assert.equal(f.to, 'M7');
+  // A flagged name reads with a ? on the keys, and says why in words.
+  const d = VL.describe('TD(2)', { ...ctx, vil: changed, notes, flags: { M3: { how: 'changed' } } });
+  assert.equal(d.hold, 'Alfred clipboard?');
+  assert.match(d.full, /May be out of date: this macro has changed/);
+});
+t('names saved before prints existed still load (their own storage key, added not replaced)', () => {
+  assert.match(html, /'vial-layers:notes:' \+ layoutId\(\)/);
+  assert.match(html, /'vial-layers:prints:' \+ layoutId\(\)/);
+});
+t('the hotkey closes an open map instead of opening a second one', () => {
+  const sh = readFileSync(join(root, 'hotkey', 'open-layer-map.sh'), 'utf8');
+  assert.match(sh, /close window id wid/);
+  // Closing saves where the window was; opening puts it back there, else fits the screen.
+  assert.match(sh, /echo "\$BOUNDS" > "\$SAVED"/);
+  assert.match(sh, /set bounds of window id wid to b/);
+  assert.match(sh, /visibleFrame/);
+});
+t('an empty layer is a small chip that says so when shown', () => {
+  assert.match(html, /class="chip empty"/);
+  assert.doesNotMatch(html, /Hidden \(empty\)/);
+  assert.match(html, /' is empty<\/h2>/);
+});
+t('the Load button shows which file is loaded, and a load says so', () => {
+  assert.match(html, /querySelector\('\.label'\)\.textContent = state\.builtIn \? 'Load \.vil' : state\.fileName/);
+  assert.match(html, /toast\('Loaded ' \+ f\.name/);
+});
+t('the credit goes to the GitHub profile, the GitHub icon to this repo', () => {
+  assert.match(html, /const SITE_URL = 'https:\/\/github\.com\/dileeparanawake';/);
+  assert.match(html, /class="icon" href="https:\/\/github\.com\/dileeparanawake\/vial-keyboard-layers"/);
+});
 t('rejects non-vil JSON', () => {
   assert.throws(() => VL.analyse({ foo: 1 }), /no "layout"/);
 });

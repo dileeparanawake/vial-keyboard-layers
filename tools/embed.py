@@ -41,7 +41,10 @@ html = replace_block(html, "default-vil", "default-vil", vil)
 print(f"Embedded {src.name} ({len(vil)} bytes)")
 if notes_path.exists():
     notes = json.loads(notes_path.read_text(encoding="utf-8"))
-    payload = compact({"uid": notes.get("uid"), "notes": notes.get("notes", {})})
+    embedded = {"uid": notes.get("uid"), "notes": notes.get("notes", {})}
+    if notes.get("prints"):
+        embedded["prints"] = notes["prints"]
+    payload = compact(embedded)
     html = replace_block(html, "default-notes", "default-notes", payload)
     print(f"Embedded notes.json ({len(notes.get('notes', {}))} names)")
 html_path.write_text(html, encoding="utf-8")
