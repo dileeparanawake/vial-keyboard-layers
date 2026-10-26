@@ -16,7 +16,7 @@ Then, in Vial, File, Save current layout, and drop the `.vil` on the page.
 - **Lightweight.** One HTML file, about 120 KB, no dependencies, no build step.
 - **Four ways in.** A browser tab, an installed web app, its own Mac app, or a Chrome window on a hotkey. See [Ways to open it](#ways-to-open-it).
 
-**Contents:** [Why](#why-it-exists) · [How to use it](#how-to-use-it) · [Ways to open it](#ways-to-open-it) · [Privacy](#privacy) · [What it works with](#what-it-works-with) · [Limitations](#limitations) · [Related tools](#related-tools) · [Files](#files)
+**Contents:** [Why](#why-it-exists) · [How to use it](#how-to-use-it) · [Ways to open it](#ways-to-open-it) · [Privacy](#privacy) · [What it works with](#what-it-works-with) · [Limitations](#limitations) · [Related tools](#related-tools) · [Files](#files) · [Support](#support)
 
 ## Why it exists
 
@@ -67,7 +67,7 @@ Your layout shows straight away. A note says **Loaded your-file.vil · 5 layers*
 - **An empty layer** is a small dimmed number in a dashed outline among the layer buttons. Click it (or press its number) and it says it's empty; it has no place on the keys.
 - **Under the map:** the tap dances, macros, combos and key overrides in use.
 - **Open on a layer:** `index.html?layer=1` opens straight onto layer 1; `?layer=all` onto the overview.
-- **The credit bar stays pinned to the bottom** of the window, and the keyboard fits above it. **Built by Dileepa Ranawake** links to the author's GitHub profile, the GitHub icon to this repo, and the LinkedIn icon to LinkedIn.
+- **The credit bar stays pinned to the bottom** of the window, and the keyboard fits above it. **Built by Dileepa Ranawake** links to the author's GitHub profile, the GitHub icon to this repo, the LinkedIn icon to LinkedIn, and **Buy me a coffee** to Ko-fi.
 
 <details>
 <summary><b>Shortcuts</b></summary>
@@ -309,6 +309,12 @@ manifest.webmanifest        the app's name and icon when installed from the live
 ```
 
 To change the built-in layout: copy your `.vil` into `layouts/`, then run `python3 tools/embed.py layouts/<file>.vil`.
+
+## Support
+
+Vial Keyboard Layers is free. If it saves you time, chip in or buy me a coffee.
+
+[![Buy me a coffee on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/dileepabuilds)
 
 ## Licence
 
