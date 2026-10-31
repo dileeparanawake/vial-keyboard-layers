@@ -253,6 +253,8 @@ A web page cannot catch a key while another app has focus, so C and D need somet
 - **Your `.vil` file is never uploaded.** There is no server, and the page makes no network requests of its own. (Served over http, it reads the `notes.json` beside it; nothing else.)
 - **What it keeps stays on your machine:** the last layout you loaded and your names, in your browser's local storage.
 
+The full privacy policy, with who is responsible and your rights, is on [dileeparanawake.com](https://dileeparanawake.com/products/vial-keyboard-layers/privacy).
+
 ## What it works with
 
 - **Browsers:** tested in Chrome. It uses nothing browser-specific, so current Safari, Firefox and Edge should work too. **Edit in Vial** opens Vial web, which needs Chrome, Edge or Arc (Safari and Firefox have no WebHID).
@@ -296,6 +298,7 @@ Together they make a good image for sharing a layout. This page is for the other
 ```
 index.html                  the whole app: markup, styles, parser, UI, built-in example layout
 WHY.md                      what it is for, and the test it has to pass
+PRIVACY.md                  points to the privacy policy on dileeparanawake.com
 layouts/miryoku-11.vil      the example layout
 notes.json                  names for what keys do, the defaults
 tools/embed.py              copies a .vil and notes.json into index.html as the built-in defaults
